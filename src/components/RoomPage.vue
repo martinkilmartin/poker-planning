@@ -93,10 +93,14 @@ watch(() => state.status, (newStatus, oldStatus) => {
         </button>
       </div>
       <div class="controls" v-if="isHost">
-        <button class="btn btn-sm" @click="reveal" v-if="state.status === 'voting'">Reveal</button>
-        <button class="btn btn-sm" @click="hide" v-if="state.status === 'revealed'">Hide</button>
-        <button class="btn btn-sm" @click="reset">Reset</button>
-        <button class="btn btn-sm btn-danger" @click="endSession">End Session</button>
+        <div class="primary-controls">
+          <button class="btn btn-sm" @click="reveal" v-if="state.status === 'voting'">Reveal</button>
+          <button class="btn btn-sm" @click="hide" v-if="state.status === 'revealed'">Hide</button>
+          <button class="btn btn-sm btn-danger" @click="endSession">End Session</button>
+        </div>
+        <div class="secondary-controls">
+          <button class="btn btn-sm btn-reset" @click="reset">Reset Votes</button>
+        </div>
       </div>
     </header>
 
@@ -180,6 +184,19 @@ watch(() => state.status, (newStatus, oldStatus) => {
   justify-content: space-between;
   align-items: center;
   padding: 1rem;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.primary-controls,
+.secondary-controls {
+  display: flex;
+  gap: 0.5rem;
 }
 
 .status-bar {
@@ -417,6 +434,16 @@ watch(() => state.status, (newStatus, oldStatus) => {
 
 .btn-danger:hover {
   background: rgba(239, 68, 68, 0.3);
+}
+
+.btn-reset {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.btn-reset:hover {
+  background: rgba(59, 130, 246, 0.3);
 }
 
 .status-badge {
