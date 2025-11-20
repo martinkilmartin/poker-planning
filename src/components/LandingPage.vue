@@ -8,7 +8,7 @@ const name = ref('');
 const roomId = ref('');
 const mode = ref<'menu' | 'join'>('menu');
 const isLoading = ref(false);
-const useLocalServer = ref(true);
+const useLocalServer = ref(false);
 const customRoomCode = ref('');
 
 const handleCreate = async () => {
@@ -114,11 +114,14 @@ const handleJoin = async () => {
           <input type="checkbox" v-model="useLocalServer">
           <span>Use Local Server (Dev)</span>
         </label>
-        <p class="help-text">Check this if you cannot connect to the public server.</p>
+        <p class="help-text">
+          ⚙️ For development or if the public server is blocked (VPN/firewall).<br>
+          Requires running: <code>npm run dev:server</code>
+        </p>
       </div>
 
       <div v-if="error" class="error-alert">
-        {{ error }}
+        <div class="error-content">{{ error }}</div>
       </div>
     </div>
   </div>
@@ -127,12 +130,19 @@ const handleJoin = async () => {
 <style scoped>
 .error-alert {
   margin-top: 1rem;
-  padding: 0.75rem;
-  background: rgba(239, 68, 68, 0.2);
-  border: 1px solid #ef4444;
-  color: #fca5a5;
+  padding: 1rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
   border-radius: var(--radius-md);
+  max-width: 100%;
+}
+
+.error-content {
+  color: #fca5a5;
   font-size: 0.875rem;
+  line-height: 1.6;
+  white-space: pre-line;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .dev-options {

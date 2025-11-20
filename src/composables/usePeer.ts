@@ -104,11 +104,54 @@ export function usePeer() {
             p.on('error', (err: any) => {
                 console.error('Peer error:', err);
                 clearTimeout(timeout);
+
+                // Detailed error messages for users
+                let userMessage = '';
+
                 if (err.type === 'peer-unavailable') {
-                    error.value = 'Room not found. Please check the ID or ask the Host to create a new room.';
+                    userMessage = '❌ Room not found.\n\n' +
+                        'The room may have closed or the Room ID is incorrect.\n' +
+                        'Please check the code and try again.';
+                } else if (err.type === 'network') {
+                    userMessage = '🌐 Network Connection Problem\n\n' +
+                        'Cannot connect to the signaling server.\n\n' +
+                        '🔍 Common causes:\n' +
+                        '• Corporate VPN blocking WebRTC traffic\n' +
+                        '• Firewall blocking required ports\n' +
+                        '• No internet connection\n\n' +
+                        '💡 Try:\n' +
+                        '1. Disconnect from VPN and retry\n' +
+                        '2. Check "Use Local Server (Dev)" if on same network\n' +
+                        '3. Check your internet connection';
+                } else if (err.type === 'server-error') {
+                    userMessage = '🔌 Server Connection Failed\n\n' +
+                        'Cannot reach the PeerJS server.\n\n' +
+                        '💡 Try:\n' +
+                        '• Use "Local Server (Dev)" option\n' +
+                        '• Check your network connection\n' +
+                        '• Server may be temporarily down';
+                } else if (err.type === 'socket-error' || err.message?.includes('WebSocket')) {
+                    userMessage = '🔒 WebSocket Connection Blocked\n\n' +
+                        'Your network is blocking the connection.\n\n' +
+                        '🔍 This usually means:\n' +
+                        '• VPN is active (most common)\n' +
+                        '• Corporate firewall blocking ports\n' +
+                        '• Network proxy interfering\n\n' +
+                        '💡 Solutions:\n' +
+                        '1. Disconnect VPN and try again\n' +
+                        '2. Use "Local Server (Dev)" if everyone is on the same network\n' +
+                        '3. Contact IT to whitelist *.peerjs.com';
+                } else if (err.type === 'disconnected') {
+                    userMessage = '📡 Connection Lost\n\n' +
+                        'Lost connection to signaling server.\n\n' +
+                        '💡 Click the "Reconnect" button to try again.';
                 } else {
-                    error.value = err.message || 'Connection error';
+                    userMessage = `⚠️ Connection Error\n\n${err.message || 'Unknown error'}\n\n` +
+                        '💡 If on VPN, try disconnecting and refreshing the page.';
                 }
+
+                error.value = userMessage;
+
                 // Reject if it's a fatal initialization error
                 if (serverConnectionStatus.value === 'connecting' && !resolved) {
                     resolved = true;
