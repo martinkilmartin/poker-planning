@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted } from 'vue';
 import LandingPage from './components/LandingPage.vue';
 import RoomPage from './components/RoomPage.vue';
 import { useGame } from './composables/useGame';
-import { getCurrentRoomFromURL, onHashChange } from './utils/router';
+import { getCurrentRoomFromURL, onUrlChange } from './utils/router';
 
 const { state } = useGame();
 
@@ -19,21 +19,21 @@ onMounted(() => {
   }
 });
 
-// Watch for hash changes
-let removeHashListener: (() => void) | undefined;
+// Watch for URL changes (browser back/forward)
+let removeUrlListener: (() => void) | undefined;
 onMounted(() => {
-  removeHashListener = onHashChange(() => {
+  removeUrlListener = onUrlChange(() => {
     const roomIdFromURL = getCurrentRoomFromURL();
     if (!roomIdFromURL && inRoom.value) {
-      // Hash cleared but still in room - user navigated back
+      // URL cleared but still in room - user navigated back
       // Could handle cleanup here if needed
     }
   });
 });
 
 onUnmounted(() => {
-  if (removeHashListener) {
-    removeHashListener();
+  if (removeUrlListener) {
+    removeUrlListener();
   }
 });
 </script>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useGame } from '../composables/useGame';
+import { getCurrentRoomFromURL, saveUserName, getSavedUserName } from '../utils/router';
 
 const { createRoom, joinRoom, error } = useGame();
 
@@ -11,10 +12,38 @@ const isLoading = ref(false);
 const useLocalServer = ref(false);
 const customRoomCode = ref('');
 
+// On mount, check for room in URL and saved name
+onMounted(async () => {
+  const roomIdFromURL = getCurrentRoomFromURL();
+  const savedName = getSavedUserName();
+
+  if (roomIdFromURL) {
+    // Room ID in URL
+    roomId.value = roomIdFromURL;
+    mode.value = 'join';
+
+    if (savedName) {
+      // Auto-join if we have both room and saved name
+      name.value = savedName;
+      isLoading.value = true;
+      try {
+        await joinRoom(roomIdFromURL, savedName, useLocalServer.value);
+      } catch (e) {
+        console.error('Auto-join failed:', e);
+        isLoading.value = false;
+      }
+    }
+  } else if (savedName) {
+    // Pre-fill name if saved
+    name.value = savedName;
+  }
+});
+
 const handleCreate = async () => {
   if (!name.value) return;
   isLoading.value = true;
   try {
+    saveUserName(name.value); // Save name for future sessions
     const roomCode = customRoomCode.value.trim().toUpperCase() || undefined;
     await createRoom(name.value, useLocalServer.value, roomCode);
   } catch (e) {
@@ -27,6 +56,7 @@ const handleJoin = async () => {
   if (!name.value || !roomId.value) return;
   isLoading.value = true;
   try {
+    saveUserName(name.value); // Save name for future sessions
     await joinRoom(roomId.value, name.value, useLocalServer.value);
   } catch (e) {
     console.error(e);
