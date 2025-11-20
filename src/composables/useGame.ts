@@ -257,7 +257,8 @@ export function useGame() {
         serverConnectionStatus,
         currentServerMode,
         reconnect,
-        transferHost
+        transferHost,
+        broadcastState
     };
 }
 

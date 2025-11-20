@@ -11,7 +11,7 @@ export const getCurrentRoomFromURL = (): string | null => {
     const hash = window.location.hash;
     // Match #/room/ROOMID
     const match = hash.match(/^#\/room\/([A-Z0-9]+)$/i);
-    return match ? match[1].toUpperCase() : null;
+    return match?.[1]?.toUpperCase() ?? null;
 };
 
 export const onHashChange = (callback: () => void) => {
