@@ -20,7 +20,9 @@ export type PacketType =
     | 'VOTE'
     | 'REVEAL'
     | 'HIDE'
-    | 'RESET';
+    | 'RESET'
+    | 'HOST_TRANSFER'
+    | 'REJOIN';
 
 export interface Packet {
     type: PacketType;
@@ -29,6 +31,15 @@ export interface Packet {
 
 export interface JoinPayload {
     name: string;
+}
+
+export interface RejoinPayload {
+    userId: string;
+    name: string;
+}
+
+export interface HostTransferPayload {
+    newHostId: string;
 }
 
 export interface VotePayload {

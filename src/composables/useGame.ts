@@ -1,7 +1,7 @@
 
 import { reactive, computed, ref } from 'vue';
 import { usePeer } from './usePeer';
-import type { GameState, Packet } from '../types';
+import type { GameState, Packet, HostTransferPayload } from '../types';
 import { navigateToRoom } from '../utils/router';
 
 const state = reactive<GameState>({
@@ -115,6 +115,9 @@ export function useGame() {
                 state.status = 'voting';
                 state.players.forEach(p => p.vote = null);
                 break;
+            case 'HOST_TRANSFER':
+                handleHostTransfer(packet.payload as HostTransferPayload);
+                break;
         }
     };
 
@@ -162,6 +165,36 @@ export function useGame() {
     const handleUpdateState = (payload: any) => {
         state.players = payload.players;
         state.status = payload.status;
+    };
+
+    const handleHostTransfer = (payload: HostTransferPayload) => {
+        console.log('Host transferred to:', payload.newHostId);
+        // Update host status for all players
+        state.players.forEach(p => {
+            p.isHost = p.id === payload.newHostId;
+        });
+        // Update local isHost flag
+        isHost.value = myPeerId.value === payload.newHostId;
+    };
+
+    const transferHost = () => {
+        // Find next player to become host (first non-host player)
+        const nextHost = state.players.find(p => !p.isHost);
+        if (nextHost) {
+            // Update local state
+            state.players.forEach(p => {
+                p.isHost = p.id === nextHost.id;
+            });
+            isHost.value = myPeerId.value === nextHost.id;
+
+            // Broadcast to all players
+            sendMessage({
+                type: 'HOST_TRANSFER',
+                payload: { newHostId: nextHost.id } as HostTransferPayload
+            });
+
+            console.log('Host transferred to:', nextHost.name);
+        }
     };
 
     // Actions
@@ -223,6 +256,34 @@ export function useGame() {
         error,
         serverConnectionStatus,
         currentServerMode,
-        reconnect
+        reconnect,
+        transferHost
     };
+}
+
+// Setup player disconnect detection
+export function setupPlayerDisconnectDetection() {
+    const { transferHost } = useGame();
+    const { connections } = usePeer();
+
+    // Watch for connection closures
+    connections.value.forEach(conn => {
+        conn.on('close', () => {
+            console.log('Player disconnected:', conn.peer);
+            const game = useGame();
+            const disconnectedPlayer = game.state.players.find(p => p.id === conn.peer);
+
+            if (disconnectedPlayer?.isHost) {
+                console.log('Host disconnected, transferring host...');
+                // Remove disconnected player
+                game.state.players = game.state.players.filter(p => p.id !== conn.peer);
+                // Transfer host to next player
+                transferHost();
+            } else if (disconnectedPlayer) {
+                // Remove regular player
+                game.state.players = game.state.players.filter(p => p.id !== conn.peer);
+                game.broadcastState?.();
+            }
+        });
+    });
 }
