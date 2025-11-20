@@ -28,6 +28,10 @@ const isPeerReady = ref(false);
 const serverConnectionStatus = ref<'disconnected' | 'connecting' | 'connected'>('disconnected');
 const currentServerMode = ref<'public' | 'local'>('public');
 
+// Heartbeat tracking
+const peerHealth = ref<Map<string, { lastSeen: number, status: 'online' | 'away' | 'offline' }>>(new Map());
+let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+
 export function usePeer() {
 
     // Initialize Peer
@@ -247,6 +251,61 @@ export function usePeer() {
         }
     };
 
+    // Heartbeat/Ping system
+    const startHeartbeat = () => {
+        // Stop existing interval
+        if (heartbeatInterval) {
+            clearInterval(heartbeatInterval);
+        }
+
+        // Send PING every 10 seconds
+        heartbeatInterval = setInterval(() => {
+            connections.value.forEach(conn => {
+                if (conn.open) {
+                    conn.send({ type: 'PING', timestamp: Date.now() });
+                }
+            });
+
+            // Update status based on last seen
+            const now = Date.now();
+            peerHealth.value.forEach((health) => {
+                const timeSinceLastSeen = now - health.lastSeen;
+
+                if (timeSinceLastSeen > 30000) {
+                    health.status = 'offline';
+                } else if (timeSinceLastSeen > 15000) {
+                    health.status = 'away';
+                } else {
+                    health.status = 'online';
+                }
+            });
+        }, 10000);
+    };
+
+    const stopHeartbeat = () => {
+        if (heartbeatInterval) {
+            clearInterval(heartbeatInterval);
+            heartbeatInterval = null;
+        }
+    };
+
+    const updatePeerHealth = (peerId: string, status: 'online' | 'away' | 'offline' = 'online') => {
+        peerHealth.value.set(peerId, {
+            lastSeen: Date.now(),
+            status
+        });
+    };
+
+    const getPeerStatus = (peerId: string): 'online' | 'away' | 'offline' => {
+        const health = peerHealth.value.get(peerId);
+        if (!health) return 'offline';
+
+        const timeSinceLastSeen = Date.now() - health.lastSeen;
+        if (timeSinceLastSeen > 30000) return 'offline';
+        if (timeSinceLastSeen > 15000) return 'away';
+        return 'online';
+    };
+
     return {
         peer,
         myPeerId,
@@ -259,6 +318,11 @@ export function usePeer() {
         isHost,
         serverConnectionStatus,
         currentServerMode,
-        reconnect
+        reconnect,
+        startHeartbeat,
+        stopHeartbeat,
+        updatePeerHealth,
+        getPeerStatus,
+        peerHealth
     };
 }

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useGame } from '../composables/useGame';
-import { getCurrentRoomFromURL, saveUserName, getSavedUserName } from '../utils/router';
+import { getCurrentRoomFromURL, saveUserName, getSavedUserName, getRoomState } from '../utils/router';
 
-const { createRoom, joinRoom, error } = useGame();
+const { createRoom, joinRoom, rejoinRoom, error } = useGame();
 
 const name = ref('');
 const roomId = ref('');
@@ -12,18 +12,43 @@ const isLoading = ref(false);
 const useLocalServer = ref(false);
 const customRoomCode = ref('');
 
-// On mount, check for room in URL and saved name
+// On mount, check for rejoin scenario
 onMounted(async () => {
+  // Priority 1: Check for existing room state in localStorage (refresh scenario)
+  const roomState = getRoomState();
+  
+  if (roomState) {
+    // User was in a room and refreshed - auto-rejoin
+    console.log('Detected refresh, attempting to rejoin room:', roomState.roomId);
+    name.value = roomState.myName;
+    isLoading.value = true;
+    
+    try {
+      await rejoinRoom(roomState.roomId, roomState.myName, roomState.isHost, useLocalServer.value);
+      // Rejoin successful - stay in loading state, will navigate to room
+    } catch (e) {
+      console.error('Auto-rejoin failed:', e);
+      isLoading.value = false;
+      // Clear stale room state
+      const savedUserName = getSavedUserName();
+      if (savedUserName) {
+        name.value = savedUserName;
+      }
+    }
+    return;
+  }
+
+  // Priority 2: Check for room ID in URL (shared link scenario)
   const roomIdFromURL = getCurrentRoomFromURL();
   const savedName = getSavedUserName();
 
   if (roomIdFromURL) {
-    // Room ID in URL
+    // Room ID in URL - prepare to join
     roomId.value = roomIdFromURL;
     mode.value = 'join';
 
     if (savedName) {
-      // Auto-join if we have both room and saved name
+      // Auto-join if we have saved name
       name.value = savedName;
       isLoading.value = true;
       try {
@@ -34,7 +59,7 @@ onMounted(async () => {
       }
     }
   } else if (savedName) {
-    // Pre-fill name if saved
+    // Priority 3: Just pre-fill saved name
     name.value = savedName;
   }
 });

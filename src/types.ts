@@ -3,6 +3,7 @@ export interface Player {
     name: string;
     vote: string | null; // null means not voted yet
     isHost: boolean;
+    connectionStatus?: 'online' | 'away' | 'offline';
 }
 
 export type GameStatus = 'voting' | 'revealed';
@@ -22,7 +23,10 @@ export type PacketType =
     | 'HIDE'
     | 'RESET'
     | 'HOST_TRANSFER'
-    | 'REJOIN';
+    | 'REJOIN'
+    | 'PING'
+    | 'PONG'
+    | 'HOST_CLAIM';
 
 export interface Packet {
     type: PacketType;

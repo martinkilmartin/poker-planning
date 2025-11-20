@@ -49,3 +49,39 @@ export const clearSavedUserName = (): void => {
         console.error('Failed to clear saved user name:', e);
     }
 };
+
+// Room state persistence for refresh/rejoin
+const ROOM_STATE_KEY = 'poker-planning-room-state';
+
+export interface RoomState {
+    roomId: string;
+    isHost: boolean;
+    myName: string;
+}
+
+export const saveRoomState = (roomId: string, isHost: boolean, myName: string): void => {
+    try {
+        const state: RoomState = { roomId, isHost, myName };
+        localStorage.setItem(ROOM_STATE_KEY, JSON.stringify(state));
+    } catch (e) {
+        console.error('Failed to save room state:', e);
+    }
+};
+
+export const getRoomState = (): RoomState | null => {
+    try {
+        const state = localStorage.getItem(ROOM_STATE_KEY);
+        return state ? JSON.parse(state) : null;
+    } catch (e) {
+        console.error('Failed to get room state:', e);
+        return null;
+    }
+};
+
+export const clearRoomState = (): void => {
+    try {
+        localStorage.removeItem(ROOM_STATE_KEY);
+    } catch (e) {
+        console.error('Failed to clear room state:', e);
+    }
+};

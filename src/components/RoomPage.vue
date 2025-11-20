@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { useGame } from '../composables/useGame';
-import { computed, ref, watch } from 'vue';
+import { usePeer } from '../composables/usePeer';
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import Toast from './Toast.vue';
 
 const { state, myPeerId, roomId, isHost, vote, reveal, hide, reset, serverConnectionStatus, currentServerMode, reconnect } = useGame();
+const { startHeartbeat, stopHeartbeat, getPeerStatus } = usePeer();
 
 const myVote = computed(() => {
   const me = state.players.find(p => p.id === myPeerId.value);
@@ -91,6 +93,21 @@ const displayToast = (message: string) => {
 
 const closeToast = () => {
   showToast.value = false;
+};
+
+// Start heartbeat when component mounts
+onMounted(() => {
+  startHeartbeat();
+});
+
+// Stop heartbeat when component unmounts
+onUnmounted(() => {
+  stopHeartbeat();
+});
+
+// Get player connection status
+const getPlayerStatus = (playerId: string): 'online' | 'away' | 'offline' => {
+  return getPeerStatus(playerId);
 };
 
 // Auto-copy consensus value when revealed
@@ -189,7 +206,11 @@ watch(() => state.status, (newStatus, oldStatus) => {
             </div>
             <div class="waiting" v-if="!player.vote">Thinking...</div>
           </div>
-          <div class="player-name">{{ player.name }} <span v-if="player.isHost">(Host)</span></div>
+          <div class="player-name">
+            <span class="status-dot" :class="getPlayerStatus(player.id)"></span>
+            {{ player.name }} 
+            <span v-if="player.isHost">(Host)</span>
+          </div>
         </div>
       </div>
     </main>
@@ -531,5 +552,33 @@ watch(() => state.status, (newStatus, oldStatus) => {
 
 .btn-warning:hover {
     background: rgba(245, 158, 11, 0.3);
+}
+
+.status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+}
+
+.status-dot.online {
+    background: #34d399;
+    box-shadow: 0 0 4px #34d399;
+}
+
+.status-dot.away {
+    background: #fbbf24;
+    box-shadow: 0 0 4px #fbbf24;
+}
+
+.status-dot.offline {
+    background: #f87171;
+    box-shadow: 0 0 4px #f87171;
+}
+
+.player-name {
+    display: flex;
+    align-items: center;
 }
 </style>

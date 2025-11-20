@@ -2,7 +2,7 @@
 import { reactive, computed, ref } from 'vue';
 import { usePeer } from './usePeer';
 import type { GameState, Packet, HostTransferPayload } from '../types';
-import { navigateToRoom } from '../utils/router';
+import { navigateToRoom, saveRoomState, clearRoomState } from '../utils/router';
 
 const state = reactive<GameState>({
     players: [],
@@ -39,8 +39,12 @@ export function useGame() {
             id: myPeerId.value!,
             name,
             vote: null,
-            isHost: true
+            isHost: true,
+            connectionStatus: 'online'
         });
+
+        // Save room state for refresh/rejoin
+        saveRoomState(id, true, name);
 
         // Navigate to room URL
         navigateToRoom(id);
@@ -82,6 +86,51 @@ export function useGame() {
 
         // Navigate to room URL
         navigateToRoom(hostRoomId);
+
+        // Save room state for refresh/rejoin
+        saveRoomState(hostRoomId, false, name);
+    };
+
+    // Rejoin existing room after refresh
+    const rejoinRoom = async (savedRoomId: string, savedName: string, wasHost: boolean, useLocalServer = false) => {
+        console.log('Rejoining room:', savedRoomId, 'as', savedName, wasHost ? '(host)' : '(client)');
+
+        if (wasHost) {
+            // Rejoin as host - reinitialize with same room ID
+            await initializePeer(savedRoomId, useLocalServer);
+            isHost.value = true;
+            roomId.value = savedRoomId;
+
+            // Re-add self to players list
+            state.players = [{
+                id: myPeerId.value!,
+                name: savedName,
+                vote: null,
+                isHost: true,
+                connectionStatus: 'online'
+            }];
+
+            navigateToRoom(savedRoomId);
+        } else {
+            // Rejoin as client
+            await initializePeer(undefined, useLocalServer);
+            roomId.value = savedRoomId;
+            connectToPeer(savedRoomId);
+
+            // Wait for connection then send REJOIN
+            const checkInterval = setInterval(() => {
+                const hostConn = connections.value.find(c => c.peer === savedRoomId && c.open);
+                if (hostConn) {
+                    clearInterval(checkInterval);
+                    sendMessage({
+                        type: 'REJOIN',
+                        payload: { userId: myPeerId.value, name: savedName }
+                    }, savedRoomId);
+                }
+            }, 100);
+
+            navigateToRoom(savedRoomId);
+        }
     };
 
     // Handle incoming data
@@ -92,6 +141,11 @@ export function useGame() {
             case 'JOIN':
                 if (isHost.value) {
                     handleJoin(senderId, packet.payload.name);
+                }
+                break;
+            case 'REJOIN':
+                if (isHost.value) {
+                    handleRejoin(senderId, packet.payload.name);
                 }
                 break;
             case 'WELCOME':
@@ -118,6 +172,17 @@ export function useGame() {
             case 'HOST_TRANSFER':
                 handleHostTransfer(packet.payload as HostTransferPayload);
                 break;
+            case 'HOST_CLAIM':
+                handleHostClaim(senderId);
+                break;
+            case 'PING':
+                // Respond to ping
+                sendMessage({ type: 'PONG', payload: { timestamp: Date.now() } }, senderId);
+                break;
+            case 'PONG':
+                // Heartbeat response received
+                updatePlayerStatus(senderId, 'online');
+                break;
         }
     };
 
@@ -139,6 +204,34 @@ export function useGame() {
                 payload: { players: state.players, status: state.status }
             }, id);
         }
+    };
+
+    const handleRejoin = (id: string, name: string) => {
+        console.log('Player rejoining:', name, id);
+        // Check if player already exists (reconnecting)
+        const existingPlayer = state.players.find(p => p.id === id);
+
+        if (existingPlayer) {
+            // Reconnect existing player
+            existingPlayer.connectionStatus = 'online';
+        } else {
+            // Add as new player
+            state.players.push({
+                id,
+                name,
+                vote: null,
+                isHost: false,
+                connectionStatus: 'online'
+            });
+        }
+
+        broadcastState();
+
+        // Send current state to rejoining player
+        sendMessage({
+            type: 'WELCOME',
+            payload: { players: state.players, status: state.status }
+        }, id);
     };
 
     const handleVote = (id: string, vote: string) => {
@@ -173,8 +266,11 @@ export function useGame() {
         state.players.forEach(p => {
             p.isHost = p.id === payload.newHostId;
         });
-        // Update local isHost flag
+        // Update local isHost flag and save state
         isHost.value = myPeerId.value === payload.newHostId;
+        if (isHost.value && roomId.value && myPlayer.value) {
+            saveRoomState(roomId.value, true, myPlayer.value.name);
+        }
     };
 
     const transferHost = () => {
@@ -195,6 +291,41 @@ export function useGame() {
 
             console.log('Host transferred to:', nextHost.name);
         }
+    };
+
+    const handleHostClaim = (newHostId: string) => {
+        console.log('Host claim from:', newHostId);
+        // Update all players' host status
+        state.players.forEach(p => {
+            p.isHost = p.id === newHostId;
+        });
+
+        // Update local isHost flag
+        const wasHost = isHost.value;
+        isHost.value = myPeerId.value === newHostId;
+
+        // Update room state
+        if (isHost.value && roomId.value && myPlayer.value) {
+            saveRoomState(roomId.value, true, myPlayer.value.name);
+        } else if (!isHost.value && wasHost && roomId.value && myPlayer.value) {
+            // Was host, now demoted
+            saveRoomState(roomId.value, false, myPlayer.value.name);
+        }
+    };
+
+    const updatePlayerStatus = (playerId: string, status: 'online' | 'away' | 'offline') => {
+        const player = state.players.find(p => p.id === playerId);
+        if (player) {
+            player.connectionStatus = status;
+        }
+    };
+
+    const leaveRoom = () => {
+        clearRoomState();
+        state.players = [];
+        state.status = 'voting';
+        roomId.value = null;
+        isHost.value = false;
     };
 
     // Actions
@@ -248,6 +379,7 @@ export function useGame() {
         isHost,
         createRoom,
         joinRoom,
+        rejoinRoom,
         vote,
         reveal,
         hide,
@@ -258,7 +390,9 @@ export function useGame() {
         currentServerMode,
         reconnect,
         transferHost,
-        broadcastState
+        broadcastState,
+        leaveRoom,
+        updatePlayerStatus
     };
 }
 
