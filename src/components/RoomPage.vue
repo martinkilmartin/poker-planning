@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useGame } from '../composables/useGame';
 import { computed, ref, watch } from 'vue';
+import Toast from './Toast.vue';
 
 const { state, myPeerId, roomId, isHost, vote, reveal, hide, reset, serverConnectionStatus, currentServerMode, reconnect } = useGame();
 
@@ -29,8 +30,22 @@ const playersWhoHaventVoted = computed(() =>
   state.players.filter(p => !p.vote)
 );
 
+// Consensus detection: all votes are the same
+const consensusValue = computed(() => {
+  const votes = state.players.map(p => p.vote).filter(v => v !== null);
+  if (votes.length === 0) return null;
+  
+  const firstVote = votes[0];
+  const allSame = votes.every(v => v === firstVote);
+  
+  return allSame ? firstVote : null;
+});
+
 const statusMessage = computed(() => {
   if (state.status === 'revealed') {
+    if (consensusValue.value) {
+      return `Consensus: ${consensusValue.value}`;
+    }
     return 'Votes Revealed';
   }
   
@@ -65,18 +80,43 @@ const endSession = () => {
 // Confetti effect
 const showConfetti = ref(false);
 
+// Toast notification
+const showToast = ref(false);
+const toastMessage = ref('');
+
+const displayToast = (message: string) => {
+  toastMessage.value = message;
+  showToast.value = true;
+};
+
+const closeToast = () => {
+  showToast.value = false;
+};
+
+// Auto-copy consensus value when revealed
 watch(() => state.status, (newStatus, oldStatus) => {
   if (oldStatus === 'voting' && newStatus === 'revealed') {
     showConfetti.value = true;
     setTimeout(() => {
       showConfetti.value = false;
     }, 3000);
+    
+    // Auto-copy consensus value to clipboard
+    if (consensusValue.value) {
+      navigator.clipboard.writeText(consensusValue.value).then(() => {
+        displayToast(`${consensusValue.value} copied to clipboard!`);
+      }).catch(err => {
+        console.error('Failed to copy to clipboard:', err);
+      });
+    }
   }
 });
 </script>
 
 <template>
   <div class="room-page">
+    <Toast :message="toastMessage" :show="showToast" @close="closeToast" />
+    
     <header class="header glass-panel">
       <div class="room-info">
         <span class="label">Room ID:</span>
