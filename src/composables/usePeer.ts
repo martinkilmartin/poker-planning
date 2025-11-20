@@ -196,20 +196,6 @@ export function usePeer() {
         }
     };
 
-    const destroy = () => {
-        if (peer.value) {
-            peer.value.destroy();
-            peer.value = null;
-        }
-        connections.value = [];
-    };
-
-    // DO NOT use onUnmounted in singleton composables!
-    // It will destroy the peer when ANY component using this composable unmounts
-    // onUnmounted(() => {
-    //     destroy();
-    // });
-
     const reconnect = () => {
         if (peer.value && peer.value.disconnected) {
             console.log('Attempting to reconnect...');
