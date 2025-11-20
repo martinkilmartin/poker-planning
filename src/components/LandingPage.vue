@@ -87,6 +87,7 @@ const handleJoin = async () => {
             v-model="roomId" 
             type="text" 
             placeholder="Paste Room ID"
+            @input="roomId = roomId.toUpperCase()"
           />
         </div>
         

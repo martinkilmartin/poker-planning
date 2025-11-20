@@ -2,6 +2,7 @@
 import { reactive, computed, ref } from 'vue';
 import { usePeer } from './usePeer';
 import type { GameState, Packet } from '../types';
+import { navigateToRoom } from '../utils/router';
 
 const state = reactive<GameState>({
     players: [],
@@ -35,11 +36,14 @@ export function useGame() {
 
         // Add self to players
         state.players.push({
-            id,
+            id: myPeerId.value!,
             name,
             vote: null,
             isHost: true
         });
+
+        // Navigate to room URL
+        navigateToRoom(id);
     };
 
     // Client Logic
@@ -57,8 +61,6 @@ export function useGame() {
         // Actually, `connectToPeer` in `usePeer` sets up the connection.
         // We need to hook into when that specific connection is open to send the JOIN packet.
         // Let's modify `usePeer` slightly later if needed, or just use a timeout/interval for MVP.
-        // Ideally `connectToPeer` returns the connection object.
-
         // For now, let's assume we can send it after a short delay or when the connection emits open.
         // Since `usePeer` doesn't expose the connection object return directly in the current implementation (it returns void),
         // we might need to improve `usePeer`.
@@ -77,6 +79,9 @@ export function useGame() {
                 }, hostRoomId);
             }
         }, 100);
+
+        // Navigate to room URL
+        navigateToRoom(hostRoomId);
     };
 
     // Handle incoming data
