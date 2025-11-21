@@ -4,7 +4,19 @@ import { usePeer } from '../composables/usePeer';
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import Toast from './Toast.vue';
 
-const { state, myPeerId, roomId, isHost, vote, reveal, hide, reset, serverConnectionStatus, currentServerMode, reconnect } = useGame();
+const {
+  state,
+  myPeerId,
+  roomId,
+  isHost,
+  vote,
+  reveal,
+  hide,
+  reset,
+  serverConnectionStatus,
+  currentServerMode,
+  reconnect,
+} = useGame();
 const { startHeartbeat, stopHeartbeat, getPeerStatus } = usePeer();
 
 const myVote = computed(() => {
@@ -17,9 +29,9 @@ const averageScore = computed(() => {
     .map(p => p.vote)
     .filter(v => v && !isNaN(Number(v)))
     .map(v => Number(v));
-  
+
   if (numericVotes.length === 0) return 'N/A';
-  
+
   const sum = numericVotes.reduce((a, b) => a + b, 0);
   const avg = sum / numericVotes.length;
   return avg.toFixed(1);
@@ -28,18 +40,16 @@ const averageScore = computed(() => {
 const votedCount = computed(() => state.players.filter(p => p.vote).length);
 const totalPlayers = computed(() => state.players.length);
 
-const playersWhoHaventVoted = computed(() => 
-  state.players.filter(p => !p.vote)
-);
+const playersWhoHaventVoted = computed(() => state.players.filter(p => !p.vote));
 
 // Consensus detection: all votes are the same
 const consensusValue = computed(() => {
   const votes = state.players.map(p => p.vote).filter(v => v !== null);
   if (votes.length === 0) return null;
-  
+
   const firstVote = votes[0];
   const allSame = votes.every(v => v === firstVote);
-  
+
   return allSame ? firstVote : null;
 });
 
@@ -50,27 +60,27 @@ const statusMessage = computed(() => {
     }
     return 'Votes Revealed';
   }
-  
+
   if (votedCount.value === 0) {
     return 'Waiting for votes...';
   }
-  
+
   if (votedCount.value === totalPlayers.value) {
     return 'All votes are in!';
   }
-  
+
   return `${votedCount.value} of ${totalPlayers.value} have voted`;
 });
 
-const shouldCenterStatus = computed(() => 
-  state.status === 'revealed' || votedCount.value === totalPlayers.value
+const shouldCenterStatus = computed(
+  () => state.status === 'revealed' || votedCount.value === totalPlayers.value
 );
 
 const cards = ['0', '1', '2', '3', '5', '8', '13', '21', '?', '☕'];
 
 const copyLink = () => {
-    navigator.clipboard.writeText(roomId.value || '');
-    alert('Room ID copied!');
+  navigator.clipboard.writeText(roomId.value || '');
+  alert('Room ID copied!');
 };
 
 const endSession = () => {
@@ -111,47 +121,55 @@ const getPlayerStatus = (playerId: string): 'online' | 'away' | 'offline' => {
 };
 
 // Auto-copy consensus value when revealed
-watch(() => state.status, (newStatus, oldStatus) => {
-  if (oldStatus === 'voting' && newStatus === 'revealed') {
-    showConfetti.value = true;
-    setTimeout(() => {
-      showConfetti.value = false;
-    }, 3000);
-    
-    // Auto-copy consensus value to clipboard
-    if (consensusValue.value) {
-      navigator.clipboard.writeText(consensusValue.value).then(() => {
-        displayToast(`${consensusValue.value} copied to clipboard!`);
-      }).catch(err => {
-        console.error('Failed to copy to clipboard:', err);
-      });
+watch(
+  () => state.status,
+  (newStatus, oldStatus) => {
+    if (oldStatus === 'voting' && newStatus === 'revealed') {
+      showConfetti.value = true;
+      setTimeout(() => {
+        showConfetti.value = false;
+      }, 3000);
+
+      // Auto-copy consensus value to clipboard
+      if (consensusValue.value) {
+        navigator.clipboard
+          .writeText(consensusValue.value)
+          .then(() => {
+            displayToast(`${consensusValue.value} copied to clipboard!`);
+          })
+          .catch(err => {
+            console.error('Failed to copy to clipboard:', err);
+          });
+      }
     }
   }
-});
+);
 </script>
 
 <template>
   <div class="room-page">
     <Toast :message="toastMessage" :show="showToast" @close="closeToast" />
-    
+
     <header class="header glass-panel">
       <div class="room-info">
         <span class="label">Room ID:</span>
         <code @click="copyLink" class="room-id">{{ roomId }}</code>
         <div class="status-badge" :class="serverConnectionStatus">
-            {{ serverConnectionStatus }} ({{ currentServerMode }})
+          {{ serverConnectionStatus }} ({{ currentServerMode }})
         </div>
-        <button 
-            v-if="serverConnectionStatus === 'disconnected'" 
-            class="btn btn-xs btn-warning"
-            @click="reconnect"
+        <button
+          v-if="serverConnectionStatus === 'disconnected'"
+          class="btn btn-xs btn-warning"
+          @click="reconnect"
         >
-            Reconnect
+          Reconnect
         </button>
       </div>
       <div class="controls" v-if="isHost">
         <div class="primary-controls">
-          <button class="btn btn-sm" @click="reveal" v-if="state.status === 'voting'">Reveal</button>
+          <button class="btn btn-sm" @click="reveal" v-if="state.status === 'voting'">
+            Reveal
+          </button>
           <button class="btn btn-sm" @click="hide" v-if="state.status === 'revealed'">Hide</button>
           <button class="btn btn-sm btn-danger" @click="endSession">End Session</button>
         </div>
@@ -161,17 +179,20 @@ watch(() => state.status, (newStatus, oldStatus) => {
       </div>
     </header>
 
-    <div class="status-bar glass-panel" :class="{ 'centered': shouldCenterStatus }">
-      <div class="status-message" :class="{ 'flash': state.status === 'revealed' }">
+    <div class="status-bar glass-panel" :class="{ centered: shouldCenterStatus }">
+      <div class="status-message" :class="{ flash: state.status === 'revealed' }">
         {{ statusMessage }}
       </div>
-      <div class="voters-waiting" v-if="playersWhoHaventVoted.length > 0 && state.status === 'voting'">
+      <div
+        class="voters-waiting"
+        v-if="playersWhoHaventVoted.length > 0 && state.status === 'voting'"
+      >
         <span class="waiting-label">Waiting for:</span>
-        <span 
-          v-for="player in playersWhoHaventVoted" 
+        <span
+          v-for="player in playersWhoHaventVoted"
           :key="player.id"
           class="waiting-player"
-          :class="{ 'ping': votedCount >= totalPlayers - 1 && votedCount > 0 }"
+          :class="{ ping: votedCount >= totalPlayers - 1 && votedCount > 0 }"
         >
           {{ player.name }}
         </span>
@@ -179,7 +200,12 @@ watch(() => state.status, (newStatus, oldStatus) => {
     </div>
 
     <div class="confetti-container" v-if="showConfetti">
-      <div class="confetti" v-for="i in 50" :key="i" :style="{ left: Math.random() * 100 + '%', animationDelay: Math.random() * 0.5 + 's' }">
+      <div
+        class="confetti"
+        v-for="i in 50"
+        :key="i"
+        :style="{ left: Math.random() * 100 + '%', animationDelay: Math.random() * 0.5 + 's' }"
+      >
         {{ ['🍁', '🏖️', '🏨', '✈️', '🌴', '🌊', '☀️', '🏝️'][Math.floor(Math.random() * 8)] }}
       </div>
     </div>
@@ -193,13 +219,16 @@ watch(() => state.status, (newStatus, oldStatus) => {
 
     <main class="table-area">
       <div class="players-grid">
-        <div 
-          v-for="player in state.players" 
+        <div
+          v-for="player in state.players"
           :key="player.id"
           class="player-seat"
           :class="{ 'is-me': player.id === myPeerId }"
         >
-          <div class="card-slot" :class="{ 'has-voted': player.vote, 'revealed': state.status === 'revealed' }">
+          <div
+            class="card-slot"
+            :class="{ 'has-voted': player.vote, revealed: state.status === 'revealed' }"
+          >
             <div class="card-back" v-if="player.vote && state.status === 'voting'"></div>
             <div class="card-front" v-if="state.status === 'revealed' && player.vote">
               {{ player.vote }}
@@ -208,7 +237,7 @@ watch(() => state.status, (newStatus, oldStatus) => {
           </div>
           <div class="player-name">
             <span class="status-dot" :class="getPlayerStatus(player.id)"></span>
-            {{ player.name }} 
+            {{ player.name }}
             <span v-if="player.isHost">(Host)</span>
           </div>
         </div>
@@ -217,11 +246,11 @@ watch(() => state.status, (newStatus, oldStatus) => {
 
     <footer class="hand-area glass-panel">
       <div class="cards-scroll">
-        <button 
-          v-for="card in cards" 
+        <button
+          v-for="card in cards"
           :key="card"
           class="poker-card"
-          :class="{ 'selected': myVote === card }"
+          :class="{ selected: myVote === card }"
           @click="vote(card)"
         >
           {{ card }}
@@ -284,7 +313,8 @@ watch(() => state.status, (newStatus, oldStatus) => {
 }
 
 @keyframes flash {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
@@ -346,7 +376,8 @@ watch(() => state.status, (newStatus, oldStatus) => {
 }
 
 @keyframes ping {
-  75%, 100% {
+  75%,
+  100% {
     transform: scale(1.1);
     opacity: 0.7;
   }
@@ -377,7 +408,7 @@ watch(() => state.status, (newStatus, oldStatus) => {
 }
 
 .room-id {
-  background: rgba(0,0,0,0.3);
+  background: rgba(0, 0, 0, 0.3);
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
   cursor: pointer;
@@ -508,77 +539,77 @@ watch(() => state.status, (newStatus, oldStatus) => {
 }
 
 .status-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.25rem 0.5rem;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: bold;
-    text-transform: uppercase;
-    margin-left: 1rem;
-    background: #334155;
-    color: #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-left: 1rem;
+  background: #334155;
+  color: #94a3b8;
 }
 
 .status-badge.connected {
-    background: rgba(16, 185, 129, 0.2);
-    color: #34d399;
-    border: 1px solid rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
 }
 
 .status-badge.connecting {
-    background: rgba(245, 158, 11, 0.2);
-    color: #fbbf24;
-    border: 1px solid rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
 }
 
 .status-badge.disconnected {
-    background: rgba(239, 68, 68, 0.2);
-    color: #f87171;
-    border: 1px solid rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
 }
 
 .btn-xs {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-    margin-left: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  margin-left: 0.5rem;
 }
 
 .btn-warning {
-    background: rgba(245, 158, 11, 0.2);
-    color: #fbbf24;
-    border: 1px solid rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
 }
 
 .btn-warning:hover {
-    background: rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.3);
 }
 
 .status-dot {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    margin-right: 0.5rem;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 0.5rem;
 }
 
 .status-dot.online {
-    background: #34d399;
-    box-shadow: 0 0 4px #34d399;
+  background: #34d399;
+  box-shadow: 0 0 4px #34d399;
 }
 
 .status-dot.away {
-    background: #fbbf24;
-    box-shadow: 0 0 4px #fbbf24;
+  background: #fbbf24;
+  box-shadow: 0 0 4px #fbbf24;
 }
 
 .status-dot.offline {
-    background: #f87171;
-    box-shadow: 0 0 4px #f87171;
+  background: #f87171;
+  box-shadow: 0 0 4px #f87171;
 }
 
 .player-name {
-    display: flex;
-    align-items: center;
+  display: flex;
+  align-items: center;
 }
 </style>

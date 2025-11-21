@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useGame } from '../composables/useGame';
-import { getCurrentRoomFromURL, saveUserName, getSavedUserName, getRoomState } from '../utils/router';
+import {
+  getCurrentRoomFromURL,
+  saveUserName,
+  getSavedUserName,
+  getRoomState,
+} from '../utils/router';
 
 const { createRoom, joinRoom, rejoinRoom, error } = useGame();
 
@@ -16,19 +21,19 @@ const customRoomCode = ref('');
 onMounted(async () => {
   // Priority 1: Check for existing room state in localStorage (refresh scenario)
   const roomState = getRoomState();
-  
+
   if (roomState) {
     // User was in a room and refreshed - auto-rejoin
     console.log('Detected refresh, attempting to rejoin room:', roomState.roomId);
     name.value = roomState.myName;
     isLoading.value = true;
-    
+
     // Add timeout to prevent infinite loading
     const timeoutId = setTimeout(() => {
       console.error('Rejoin timed out');
       isLoading.value = false;
     }, 10000);
-    
+
     try {
       await rejoinRoom(roomState.roomId, roomState.myName, roomState.isHost, useLocalServer.value);
       // Rejoin successful
@@ -110,42 +115,29 @@ const handleJoin = async () => {
   <div class="landing-page">
     <div class="glass-panel card">
       <h1 class="title">Poker Planning</h1>
-      
+
       <div class="input-group">
         <label>Your Name</label>
-        <input 
-          v-model="name" 
-          type="text" 
-          placeholder="Enter your name"
-          maxlength="15"
-        />
+        <input v-model="name" type="text" placeholder="Enter your name" maxlength="15" />
       </div>
 
       <div v-if="mode === 'menu'">
         <div class="input-group">
           <label>Custom Room Code (optional)</label>
-          <input 
-            v-model="customRoomCode" 
-            type="text" 
-            placeholder="e.g., MYROOM (6 chars)" 
+          <input
+            v-model="customRoomCode"
+            type="text"
+            placeholder="e.g., MYROOM (6 chars)"
             maxlength="6"
             @input="customRoomCode = customRoomCode.toUpperCase()"
           />
         </div>
         <div class="actions">
-          <button 
-            class="btn btn-primary" 
-            :disabled="!name || isLoading"
-            @click="handleCreate"
-          >
+          <button class="btn btn-primary" :disabled="!name || isLoading" @click="handleCreate">
             {{ isLoading ? 'Creating...' : 'Create New Room' }}
           </button>
-          
-          <button 
-            class="btn btn-secondary" 
-            :disabled="!name"
-            @click="mode = 'join'"
-          >
+
+          <button class="btn btn-secondary" :disabled="!name" @click="mode = 'join'">
             Join Existing Room
           </button>
         </div>
@@ -154,39 +146,34 @@ const handleJoin = async () => {
       <div v-else class="join-form">
         <div class="input-group">
           <label>Room ID</label>
-          <input 
-            v-model="roomId" 
-            type="text" 
+          <input
+            v-model="roomId"
+            type="text"
             placeholder="Paste Room ID"
             @input="roomId = roomId.toUpperCase()"
           />
         </div>
-        
+
         <div class="actions">
-          <button 
-            class="btn btn-primary" 
+          <button
+            class="btn btn-primary"
             :disabled="!name || !roomId || isLoading"
             @click="handleJoin"
           >
             {{ isLoading ? 'Joining...' : 'Join Room' }}
           </button>
-          
-          <button 
-            class="btn btn-text" 
-            @click="mode = 'menu'"
-          >
-            Back
-          </button>
+
+          <button class="btn btn-text" @click="mode = 'menu'">Back</button>
         </div>
       </div>
 
       <div class="dev-options">
         <label class="checkbox-label">
-          <input type="checkbox" v-model="useLocalServer">
+          <input type="checkbox" v-model="useLocalServer" />
           <span>Use Local Server (Dev)</span>
         </label>
         <p class="help-text">
-          ⚙️ For development or if the public server is blocked (VPN/firewall).<br>
+          ⚙️ For development or if the public server is blocked (VPN/firewall).<br />
           Requires running: <code>npm run dev:server</code>
         </p>
       </div>

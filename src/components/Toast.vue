@@ -11,13 +11,16 @@ const emit = defineEmits<{
 }>();
 
 // Auto-dismiss after 3 seconds
-watch(() => props.show, (newShow) => {
-  if (newShow) {
-    setTimeout(() => {
-      emit('close');
-    }, 3000);
+watch(
+  () => props.show,
+  newShow => {
+    if (newShow) {
+      setTimeout(() => {
+        emit('close');
+      }, 3000);
+    }
   }
-});
+);
 </script>
 
 <template>
