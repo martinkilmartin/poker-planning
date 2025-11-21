@@ -16,6 +16,51 @@ const roomId = ref<string | null>(null);
 // isServer: True if I am the PeerJS server (Room Creator). Handles networking/broadcasting.
 const isServer = ref(false);
 
+// Module-level access to sendMessage for intervals
+let globalSendMessage: ((data: any, targetId?: string) => void) | null = null;
+
+const broadcastStateGlobal = () => {
+  if (globalSendMessage) {
+    globalSendMessage({
+      type: 'UPDATE_STATE',
+      payload: {
+        players: state.players,
+        status: state.status,
+        autoReveal: state.autoReveal,
+        autoRevealDuration: state.autoRevealDuration,
+        countdownStartTime: state.countdownStartTime,
+      },
+    });
+  }
+};
+
+const revealGlobal = () => {
+  state.status = 'revealed';
+  state.countdownStartTime = null;
+  broadcastStateGlobal();
+  if (globalSendMessage) {
+    globalSendMessage({ type: 'REVEAL' });
+  }
+};
+
+// Auto-reveal check interval
+setInterval(() => {
+  // Only Server runs the auto-reveal timer logic
+  if (isServer.value && state.autoReveal && state.countdownStartTime && state.status === 'voting') {
+    const elapsed = (Date.now() - state.countdownStartTime) / 1000;
+    if (elapsed >= state.autoRevealDuration) {
+      revealGlobal();
+    }
+  }
+}, 1000);
+
+// State Heartbeat: Broadcast full state periodically to ensure sync
+setInterval(() => {
+  if (isServer.value) {
+    broadcastStateGlobal();
+  }
+}, 5000);
+
 export function useGame() {
   const {
     myPeerId,
@@ -30,6 +75,11 @@ export function useGame() {
     currentServerMode,
     reconnect,
   } = usePeer();
+
+  // Initialize global sendMessage for intervals
+  if (!globalSendMessage) {
+    globalSendMessage = sendMessage;
+  }
 
   const myUserId = getOrCreateUserId(); // Get stable user ID
   const myPlayer = computed(() => state.players.find(p => p.userId === myUserId));
@@ -236,29 +286,6 @@ export function useGame() {
       }
     }
   };
-
-  // Auto-reveal check interval
-  setInterval(() => {
-    // Only Server runs the auto-reveal timer logic
-    if (
-      isServer.value &&
-      state.autoReveal &&
-      state.countdownStartTime &&
-      state.status === 'voting'
-    ) {
-      const elapsed = (Date.now() - state.countdownStartTime) / 1000;
-      if (elapsed >= state.autoRevealDuration) {
-        reveal();
-      }
-    }
-  }, 1000);
-
-  // State Heartbeat: Broadcast full state periodically to ensure sync
-  setInterval(() => {
-    if (isServer.value) {
-      broadcastState();
-    }
-  }, 2000);
 
   // Host Handlers
   const handleJoin = (id: string, name: string, userId: string) => {
