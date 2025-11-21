@@ -24,3 +24,4 @@ dist-ssr
 *.sw?
 playwright-report/index.html
 test-results/.last-run.json
+debug-load.png
