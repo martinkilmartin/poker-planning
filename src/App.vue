@@ -5,7 +5,7 @@ import RoomPage from './components/RoomPage.vue';
 import { useGame } from './composables/useGame';
 import { getCurrentRoomFromURL, onUrlChange } from './utils/router';
 
-const { state, roomId } = useGame();
+const { roomId } = useGame();
 
 const inRoom = computed(() => roomId.value !== null);
 
