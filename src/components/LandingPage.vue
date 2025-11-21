@@ -39,7 +39,8 @@ onMounted(async () => {
         roomState.roomId,
         roomState.myName,
         roomState.isHost,
-        roomState.myPeerId, // Pass saved peer ID!
+        roomState.myPeerId,
+        roomState.userId, // Pass saved user ID!
         useLocalServer.value
       );
       // Rejoin successful

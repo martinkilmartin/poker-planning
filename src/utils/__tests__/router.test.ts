@@ -105,7 +105,7 @@ describe('router.ts', () => {
 
   describe('saveRoomState / getRoomState', () => {
     it('should save room state to localStorage', () => {
-      saveRoomState('ABC123', true, 'Alice', 'PEER123');
+      saveRoomState('ABC123', true, 'Alice', 'PEER123', 'USER123');
 
       const saved = JSON.parse(localStorage.getItem('poker-planning-room-state')!);
       expect(saved).toEqual({
@@ -113,11 +113,18 @@ describe('router.ts', () => {
         isHost: true,
         myName: 'Alice',
         myPeerId: 'PEER123',
+        userId: 'USER123',
       });
     });
 
     it('should retrieve saved room state', () => {
-      const state = { roomId: 'XYZ789', isHost: false, myName: 'Bob', myPeerId: 'PEER456' };
+      const state = {
+        roomId: 'XYZ789',
+        isHost: false,
+        myName: 'Bob',
+        myPeerId: 'PEER456',
+        userId: 'USER456',
+      };
       localStorage.setItem('poker-planning-room-state', JSON.stringify(state));
 
       expect(getRoomState()).toEqual(state);
@@ -128,7 +135,7 @@ describe('router.ts', () => {
     });
 
     it('should save peer ID correctly', () => {
-      saveRoomState(' abc ', true, 'Alice', 'PEER789');
+      saveRoomState(' abc ', true, 'Alice', 'PEER789', 'USER789');
 
       const saved = JSON.parse(localStorage.getItem('poker-planning-room-state')!);
       expect(saved.myPeerId).toBe('PEER789');
@@ -137,7 +144,7 @@ describe('router.ts', () => {
 
   describe('clearRoomState', () => {
     it('should remove room state from localStorage', () => {
-      saveRoomState('ABC123', true, 'Alice', 'PEER123');
+      saveRoomState('ABC123', true, 'Alice', 'PEER123', 'USER123');
       clearRoomState();
       expect(localStorage.getItem('poker-planning-room-state')).toBeNull();
     });

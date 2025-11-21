@@ -90,6 +90,7 @@ describe('useGame', () => {
       // Add player first
       state.players.push({
         id: myPeerId.value!,
+        userId: 'user-test',
         name: 'Alice',
         vote: null,
         isHost: true,
@@ -108,8 +109,8 @@ describe('useGame', () => {
       // Set as host first
       isHost.value = true;
       state.players = [
-        { id: '1', name: 'Alice', vote: '5', isHost: true },
-        { id: '2', name: 'Bob', vote: '8', isHost: false },
+        { id: '1', userId: 'user1', name: 'Alice', vote: '5', isHost: true },
+        { id: '2', userId: 'user2', name: 'Bob', vote: '8', isHost: false },
       ];
 
       reveal();
@@ -124,8 +125,8 @@ describe('useGame', () => {
       isHost.value = true;
       state.status = 'revealed';
       state.players = [
-        { id: '1', name: 'Alice', vote: '5', isHost: true },
-        { id: '2', name: 'Bob', vote: '8', isHost: false },
+        { id: '1', userId: 'user1', name: 'Alice', vote: '5', isHost: true },
+        { id: '2', userId: 'user2', name: 'Bob', vote: '8', isHost: false },
       ];
 
       hide();
@@ -140,8 +141,8 @@ describe('useGame', () => {
       isHost.value = true;
       state.status = 'revealed';
       state.players = [
-        { id: '1', name: 'Alice', vote: '5', isHost: true },
-        { id: '2', name: 'Bob', vote: '8', isHost: false },
+        { id: '1', userId: 'user1', name: 'Alice', vote: '5', isHost: true },
+        { id: '2', userId: 'user2', name: 'Bob', vote: '8', isHost: false },
       ];
 
       reset();
@@ -153,35 +154,27 @@ describe('useGame', () => {
   });
 
   describe('consensus detection', () => {
-    it('should detect consensus when all votes match', () => {
+    it('should have player votes in state', () => {
       const { state } = useGame();
 
       state.players = [
-        { id: '1', name: 'Alice', vote: '5', isHost: true },
-        { id: '2', name: 'Bob', vote: '5', isHost: false },
-        { id: '3', name: 'Charlie', vote: '5', isHost: false },
+        { id: '1', userId: 'user1', name: 'Alice', vote: '5', isHost: true },
+        { id: '2', userId: 'user2', name: 'Bob', vote: '5', isHost: false },
+        { id: '3', userId: 'user3', name: 'Charlie', vote: '5', isHost: false },
       ];
 
-      // Note: consensusValue is computed in RoomPage, not useGame
-      // This test is more of a data structure test
-      const votes = state.players.map(p => p.vote);
-      const allSame = votes.every(v => v === votes[0]);
-
-      expect(allSame).toBe(true);
+      expect(state.players.every(p => p.vote === '5')).toBe(true);
     });
 
-    it('should not detect consensus with mixed votes', () => {
+    it('should handle mixed votes', () => {
       const { state } = useGame();
 
       state.players = [
-        { id: '1', name: 'Alice', vote: '5', isHost: true },
-        { id: '2', name: 'Bob', vote: '8', isHost: false },
+        { id: '1', userId: 'user1', name: 'Alice', vote: '5', isHost: true },
+        { id: '2', userId: 'user2', name: 'Bob', vote: '8', isHost: false },
       ];
 
-      const votes = state.players.map(p => p.vote);
-      const allSame = votes.every(v => v === votes[0]);
-
-      expect(allSame).toBe(false);
+      expect(state.players.every(p => p.vote === '5')).toBe(false);
     });
   });
 
@@ -190,7 +183,14 @@ describe('useGame', () => {
       const { state, updatePlayerStatus } = useGame();
 
       state.players = [
-        { id: 'player1', name: 'Alice', vote: null, isHost: true, connectionStatus: 'online' },
+        {
+          id: 'player1',
+          userId: 'user1',
+          name: 'Alice',
+          vote: null,
+          isHost: true,
+          connectionStatus: 'online',
+        },
       ];
 
       updatePlayerStatus('player1', 'away');
@@ -199,10 +199,14 @@ describe('useGame', () => {
     });
 
     it('should handle non-existent player gracefully', () => {
-      const { updatePlayerStatus } = useGame();
+      const { state, updatePlayerStatus } = useGame();
+
+      state.players = [];
 
       // Should not throw
-      expect(() => updatePlayerStatus('nonexistent', 'offline')).not.toThrow();
+      updatePlayerStatus('nonexistent', 'offline');
+
+      expect(state.players.length).toBe(0);
     });
   });
 
@@ -210,7 +214,7 @@ describe('useGame', () => {
     it('should clear all room state', () => {
       const { state, leaveRoom, roomId, isHost } = useGame();
 
-      state.players = [{ id: '1', name: 'Alice', vote: '5', isHost: true }];
+      state.players = [{ id: '1', userId: 'user1', name: 'Alice', vote: '5', isHost: true }];
       state.status = 'revealed';
       roomId.value = 'ABC123';
       isHost.value = true;

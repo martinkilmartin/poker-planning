@@ -1,5 +1,6 @@
 export interface Player {
-  id: string;
+  id: string; // PeerJS connection ID (changes on reconnect)
+  userId: string; // Stable user ID (UUID, persists across reconnects)
   name: string;
   vote: string | null; // null means not voted yet
   isHost: boolean;

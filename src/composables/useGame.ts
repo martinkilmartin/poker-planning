@@ -2,6 +2,7 @@ import { reactive, computed, ref } from 'vue';
 import { usePeer } from './usePeer';
 import type { GameState, Packet, HostTransferPayload } from '../types';
 import { navigateToRoom, saveRoomState, clearRoomState } from '../utils/router';
+import { getOrCreateUserId } from '../utils/userId';
 
 const state = reactive<GameState>({
   players: [],
@@ -25,7 +26,8 @@ export function useGame() {
     reconnect,
   } = usePeer();
 
-  const myPlayer = computed(() => state.players.find(p => p.id === myPeerId.value));
+  const myUserId = getOrCreateUserId(); // Get stable user ID
+  const myPlayer = computed(() => state.players.find(p => p.userId === myUserId));
 
   // Host Logic
   const createRoom = async (name: string, useLocalServer = false, customCode?: string) => {
@@ -36,6 +38,7 @@ export function useGame() {
     // Add self to players
     state.players.push({
       id: myPeerId.value!,
+      userId: myUserId,
       name,
       vote: null,
       isHost: true,
@@ -43,7 +46,7 @@ export function useGame() {
     });
 
     // Save room state for refresh/rejoin
-    saveRoomState(id, true, name, myPeerId.value!);
+    saveRoomState(id, true, name, myPeerId.value!, myUserId);
 
     // Navigate to room URL
     navigateToRoom(id);
@@ -59,30 +62,19 @@ export function useGame() {
     // usePeer handles connection setup.
     // We can listen for 'open' on the connection in usePeer, but here we just want to send JOIN once connected.
     // A simple way is to retry or wait.
-    // Better: usePeer could expose a "onConnectionOpen" callback for specific connection?
-    // Or we just wait a bit.
-    // Actually, `connectToPeer` in `usePeer` sets up the connection.
-    // We need to hook into when that specific connection is open to send the JOIN packet.
-    // Let's modify `usePeer` slightly later if needed, or just use a timeout/interval for MVP.
-    // For now, let's assume we can send it after a short delay or when the connection emits open.
-    // Since `usePeer` doesn't expose the connection object return directly in the current implementation (it returns void),
-    // we might need to improve `usePeer`.
-
-    // Let's improve `usePeer` to return the connection or a promise.
-    // But for now, let's rely on the fact that `connections` array is reactive.
-
-    // Wait for connection to host
-    const checkInterval = setInterval(() => {
+    // Wait a moment for connection to establish, then send JOIN packet
+    setTimeout(() => {
       const hostConn = connections.value.find(c => c.peer === hostRoomId && c.open);
       if (hostConn) {
-        clearInterval(checkInterval);
         sendMessage(
           {
             type: 'JOIN',
-            payload: { name },
+            payload: { name, userId: myUserId },
           },
           hostRoomId
         );
+      } else {
+        console.error('Failed to connect to host');
       }
     }, 100);
 
@@ -90,7 +82,7 @@ export function useGame() {
     navigateToRoom(hostRoomId);
 
     // Save room state for refresh/rejoin
-    saveRoomState(hostRoomId, false, name, myPeerId.value!);
+    saveRoomState(hostRoomId, false, name, myPeerId.value!, myUserId);
   };
 
   // Rejoin existing room after refresh
@@ -98,7 +90,8 @@ export function useGame() {
     savedRoomId: string,
     savedName: string,
     wasHost: boolean,
-    savedPeerId: string, // Reuse the same peer ID!
+    savedPeerId: string,
+    savedUserId: string, // Stable user ID!
     useLocalServer = false
   ) => {
     console.log(
@@ -121,6 +114,7 @@ export function useGame() {
       state.players = [
         {
           id: myPeerId.value!,
+          userId: savedUserId,
           name: savedName,
           vote: null,
           isHost: true,
@@ -130,8 +124,8 @@ export function useGame() {
 
       navigateToRoom(savedRoomId);
     } else {
-      // Rejoin as client - use the SAME peer ID
-      await initializePeer(savedPeerId, useLocalServer); // Reuse saved peer ID
+      // Rejoin as client - use a new peer ID but SAME user ID
+      await initializePeer(undefined, useLocalServer); // New peer connection
       isHost.value = false;
       roomId.value = savedRoomId;
 
@@ -147,7 +141,7 @@ export function useGame() {
           sendMessage(
             {
               type: 'REJOIN',
-              payload: { userId: myPeerId.value, name: savedName },
+              payload: { userId: savedUserId, name: savedName },
             },
             savedRoomId
           );
@@ -165,13 +159,13 @@ export function useGame() {
     switch (packet.type) {
       case 'JOIN': {
         if (isHost.value) {
-          handleJoin(senderId, packet.payload.name);
+          handleJoin(senderId, packet.payload.name, packet.payload.userId);
         }
         break;
       }
       case 'REJOIN': {
         if (isHost.value) {
-          handleRejoin(senderId, packet.payload.name);
+          handleRejoin(senderId, packet.payload.userId, packet.payload.name);
         }
         break;
       }
@@ -224,14 +218,16 @@ export function useGame() {
   };
 
   // Host Handlers
-  const handleJoin = (id: string, name: string) => {
-    // Check if already exists
-    if (!state.players.find(p => p.id === id)) {
+  const handleJoin = (id: string, name: string, userId: string) => {
+    // Check if already exists by userId (not peer ID)
+    if (!state.players.find(p => p.userId === userId)) {
       state.players.push({
         id,
+        userId,
         name,
         vote: null,
         isHost: false,
+        connectionStatus: 'online',
       });
       broadcastState();
 
@@ -246,23 +242,27 @@ export function useGame() {
     }
   };
 
-  const handleRejoin = (id: string, name: string) => {
-    console.log('Player rejoining:', name, id);
-    // Check if player already exists (reconnecting)
-    const existingPlayer = state.players.find(p => p.id === id);
+  const handleRejoin = (id: string, userId: string, name: string) => {
+    console.log('Player rejoining:', name, 'userId:', userId, 'peerId:', id);
+    // Find by stable userId (NOT peer ID, which changes on reconnect)
+    const existingPlayer = state.players.find(p => p.userId === userId);
 
     if (existingPlayer) {
-      // Reconnect existing player
+      // Update connection details for existing player
+      existingPlayer.id = id; // Update to new peer ID
       existingPlayer.connectionStatus = 'online';
+      console.log('  -> Reconnected existing player');
     } else {
-      // Add as new player
+      // Add as new player (first time joining)
       state.players.push({
         id,
+        userId,
         name,
         vote: null,
         isHost: false,
         connectionStatus: 'online',
       });
+      console.log('  -> Added as new player');
     }
 
     broadcastState();
@@ -312,7 +312,7 @@ export function useGame() {
     // Update local isHost flag and save state
     isHost.value = myPeerId.value === payload.newHostId;
     if (isHost.value && roomId.value && myPlayer.value) {
-      saveRoomState(roomId.value, true, myPlayer.value.name, myPeerId.value!);
+      saveRoomState(roomId.value, true, myPlayer.value.name, myPeerId.value!, myUserId);
     }
   };
 
@@ -349,10 +349,10 @@ export function useGame() {
 
     // Update room state
     if (isHost.value && roomId.value && myPlayer.value) {
-      saveRoomState(roomId.value, true, myPlayer.value.name, myPeerId.value!);
+      saveRoomState(roomId.value, true, myPlayer.value.name, myPeerId.value!, myUserId);
     } else if (!isHost.value && wasHost && roomId.value && myPlayer.value) {
       // Was host, now demoted
-      saveRoomState(roomId.value, false, myPlayer.value.name, myPeerId.value!);
+      saveRoomState(roomId.value, false, myPlayer.value.name, myPeerId.value!, myUserId);
     }
   };
 
