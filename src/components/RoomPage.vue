@@ -233,7 +233,7 @@ watch(
             <div v-if="state.status === 'revealed' && player.vote" class="card-front">
               {{ player.vote }}
             </div>
-            <div v-if="!player.vote" class="waiting">Thinking...</div>
+            <div v-if="!player.vote" class="waiting">🧠</div>
           </div>
           <div class="player-name">
             <span class="status-dot" :class="getPlayerStatus(player.id)" />
@@ -423,11 +423,28 @@ watch(
 }
 
 .players-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 2rem;
-  justify-content: center;
-  max-width: 800px;
+  justify-items: center;
+  max-width: 900px;
+  padding: 2rem;
+  position: relative;
+}
+
+/* Oval table background */
+.players-grid::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80%;
+  height: 60%;
+  background: var(--surface-color);
+  border: 2px solid var(--border-color);
+  border-radius: 50%;
+  z-index: -1;
 }
 
 .player-seat {
@@ -477,9 +494,71 @@ watch(
   color: var(--text-color);
 }
 
-.hand-area {
-  padding: 1rem;
-  overflow-x: auto;
+.waiting {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  background: var(--bg-color);
+  border-radius: var(--radius-md);
+  border: 2px dashed var(--border-color);
+  background-image:
+    linear-gradient(90deg, var(--primary-color) 25%, transparent 25%),
+    linear-gradient(180deg, var(--primary-color) 25%, transparent 25%),
+    linear-gradient(270deg, var(--primary-color) 25%, transparent 25%),
+    linear-gradient(0deg, var(--primary-color) 25%, transparent 25%);
+  background-size:
+    100% 2px,
+    2px 100%,
+    100% 2px,
+    2px 100%;
+  background-position:
+    0 0,
+    100% 0,
+    100% 100%,
+    0 100%;
+  background-repeat: no-repeat;
+  animation: dash-rotate 3s linear infinite;
+}
+
+@keyframes dash-rotate {
+  0% {
+    background-position:
+      0 0,
+      100% 0,
+      100% 100%,
+      0 100%;
+  }
+  25% {
+    background-position:
+      100% 0,
+      100% 0,
+      100% 100%,
+      0 100%;
+  }
+  50% {
+    background-position:
+      100% 0,
+      100% 100%,
+      100% 100%,
+      0 100%;
+  }
+  75% {
+    background-position:
+      100% 0,
+      100% 100%,
+      0 100%,
+      0 100%;
+  }
+  100% {
+    background-position:
+      0 0,
+      100% 0,
+      100% 100%,
+      0 100%;
+  }
 }
 
 .cards-scroll {
