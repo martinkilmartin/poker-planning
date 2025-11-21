@@ -105,18 +105,19 @@ describe('router.ts', () => {
 
   describe('saveRoomState / getRoomState', () => {
     it('should save room state to localStorage', () => {
-      saveRoomState('ABC123', true, 'Alice');
+      saveRoomState('ABC123', true, 'Alice', 'PEER123');
 
       const saved = JSON.parse(localStorage.getItem('poker-planning-room-state')!);
       expect(saved).toEqual({
         roomId: 'ABC123',
         isHost: true,
         myName: 'Alice',
+        myPeerId: 'PEER123',
       });
     });
 
     it('should retrieve saved room state', () => {
-      const state = { roomId: 'XYZ789', isHost: false, myName: 'Bob' };
+      const state = { roomId: 'XYZ789', isHost: false, myName: 'Bob', myPeerId: 'PEER456' };
       localStorage.setItem('poker-planning-room-state', JSON.stringify(state));
 
       expect(getRoomState()).toEqual(state);
@@ -126,17 +127,17 @@ describe('router.ts', () => {
       expect(getRoomState()).toBeNull();
     });
 
-    it('should trim and uppercase room ID', () => {
-      saveRoomState(' abc ', true, 'Alice');
+    it('should save peer ID correctly', () => {
+      saveRoomState(' abc ', true, 'Alice', 'PEER789');
 
       const saved = JSON.parse(localStorage.getItem('poker-planning-room-state')!);
-      expect(saved.roomId).toBe(' abc '); // saveRoomState doesn't modify
+      expect(saved.myPeerId).toBe('PEER789');
     });
   });
 
   describe('clearRoomState', () => {
     it('should remove room state from localStorage', () => {
-      saveRoomState('ABC123', true, 'Alice');
+      saveRoomState('ABC123', true, 'Alice', 'PEER123');
       clearRoomState();
       expect(localStorage.getItem('poker-planning-room-state')).toBeNull();
     });

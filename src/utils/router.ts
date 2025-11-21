@@ -57,11 +57,17 @@ export interface RoomState {
   roomId: string;
   isHost: boolean;
   myName: string;
+  myPeerId: string; // Save peer ID to maintain identity
 }
 
-export const saveRoomState = (roomId: string, isHost: boolean, myName: string): void => {
+export const saveRoomState = (
+  roomId: string,
+  isHost: boolean,
+  myName: string,
+  myPeerId: string
+): void => {
   try {
-    const state: RoomState = { roomId, isHost, myName };
+    const state: RoomState = { roomId, isHost, myName, myPeerId };
     localStorage.setItem(ROOM_STATE_KEY, JSON.stringify(state));
   } catch (error) {
     console.error('Failed to save room state:', error);

@@ -35,7 +35,13 @@ onMounted(async () => {
     }, 10_000);
 
     try {
-      await rejoinRoom(roomState.roomId, roomState.myName, roomState.isHost, useLocalServer.value);
+      await rejoinRoom(
+        roomState.roomId,
+        roomState.myName,
+        roomState.isHost,
+        roomState.myPeerId, // Pass saved peer ID!
+        useLocalServer.value
+      );
       // Rejoin successful
       clearTimeout(timeoutId);
       // Give a moment for state to update before clearing loading

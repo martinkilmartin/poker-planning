@@ -43,7 +43,7 @@ export function useGame() {
     });
 
     // Save room state for refresh/rejoin
-    saveRoomState(id, true, name);
+    saveRoomState(id, true, name, myPeerId.value!);
 
     // Navigate to room URL
     navigateToRoom(id);
@@ -90,7 +90,7 @@ export function useGame() {
     navigateToRoom(hostRoomId);
 
     // Save room state for refresh/rejoin
-    saveRoomState(hostRoomId, false, name);
+    saveRoomState(hostRoomId, false, name, myPeerId.value!);
   };
 
   // Rejoin existing room after refresh
@@ -98,12 +98,21 @@ export function useGame() {
     savedRoomId: string,
     savedName: string,
     wasHost: boolean,
+    savedPeerId: string, // Reuse the same peer ID!
     useLocalServer = false
   ) => {
-    console.log('Rejoining room:', savedRoomId, 'as', savedName, wasHost ? '(host)' : '(client)');
+    console.log(
+      'Rejoining room:',
+      savedRoomId,
+      'as',
+      savedName,
+      wasHost ? '(host)' : '(client)',
+      'with peer ID:',
+      savedPeerId
+    );
 
     if (wasHost) {
-      // Rejoin as host - reinitialize with same room ID
+      // Rejoin as host - reinitialize with same room ID (peer ID)
       await initializePeer(savedRoomId, useLocalServer);
       isHost.value = true;
       roomId.value = savedRoomId;
@@ -121,11 +130,15 @@ export function useGame() {
 
       navigateToRoom(savedRoomId);
     } else {
-      // Rejoin as client
-      await initializePeer(undefined, useLocalServer);
+      // Rejoin as client - use the SAME peer ID
+      await initializePeer(savedPeerId, useLocalServer); // Reuse saved peer ID
+      isHost.value = false;
       roomId.value = savedRoomId;
+
+      // Connect to host
       connectToPeer(savedRoomId);
 
+      // Send REJOIN packet to let host know we're back
       // Wait for connection then send REJOIN
       const checkInterval = setInterval(() => {
         const hostConn = connections.value.find(c => c.peer === savedRoomId && c.open);
@@ -299,7 +312,7 @@ export function useGame() {
     // Update local isHost flag and save state
     isHost.value = myPeerId.value === payload.newHostId;
     if (isHost.value && roomId.value && myPlayer.value) {
-      saveRoomState(roomId.value, true, myPlayer.value.name);
+      saveRoomState(roomId.value, true, myPlayer.value.name, myPeerId.value!);
     }
   };
 
@@ -336,10 +349,10 @@ export function useGame() {
 
     // Update room state
     if (isHost.value && roomId.value && myPlayer.value) {
-      saveRoomState(roomId.value, true, myPlayer.value.name);
+      saveRoomState(roomId.value, true, myPlayer.value.name, myPeerId.value!);
     } else if (!isHost.value && wasHost && roomId.value && myPlayer.value) {
       // Was host, now demoted
-      saveRoomState(roomId.value, false, myPlayer.value.name);
+      saveRoomState(roomId.value, false, myPlayer.value.name, myPeerId.value!);
     }
   };
 
