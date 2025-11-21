@@ -233,6 +233,13 @@ export function useGame() {
     }
   }, 1000);
 
+  // State Heartbeat: Broadcast full state periodically to ensure sync
+  setInterval(() => {
+    if (isHost.value) {
+      broadcastState();
+    }
+  }, 2000);
+
   // Host Handlers
   const handleJoin = (id: string, name: string, userId: string) => {
     // Check if already exists by userId (not peer ID)
