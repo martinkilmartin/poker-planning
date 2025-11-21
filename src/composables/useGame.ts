@@ -749,30 +749,3 @@ export function useGame() {
     myUserId, // Added
   };
 }
-
-// Setup player disconnect detection
-export function setupPlayerDisconnectDetection() {
-  const { transferHost } = useGame();
-  const { connections } = usePeer();
-
-  // Watch for connection closures
-  for (const conn of connections.value) {
-    conn.on('close', () => {
-      console.log('Player disconnected:', conn.peer);
-      const game = useGame();
-      const disconnectedPlayer = game.state.players.find(p => p.id === conn.peer);
-
-      if (disconnectedPlayer?.isHost) {
-        console.log('Host disconnected, transferring host...');
-        // Remove disconnected player
-        game.state.players = game.state.players.filter(p => p.id !== conn.peer);
-        // Transfer host to next player
-        transferHost();
-      } else if (disconnectedPlayer) {
-        // Remove regular player
-        game.state.players = game.state.players.filter(p => p.id !== conn.peer);
-        game.broadcastState?.();
-      }
-    });
-  }
-}
