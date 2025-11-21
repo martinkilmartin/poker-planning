@@ -22,4 +22,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-playwright-report/*
+playwright-report/index.html
+test-results/.last-run.json
