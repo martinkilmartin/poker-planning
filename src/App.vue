@@ -5,9 +5,9 @@ import RoomPage from './components/RoomPage.vue';
 import { useGame } from './composables/useGame';
 import { getCurrentRoomFromURL, onUrlChange } from './utils/router';
 
-const { state } = useGame();
+const { state, roomId } = useGame();
 
-const inRoom = computed(() => state.players.length > 0);
+const inRoom = computed(() => roomId.value !== null);
 
 // Auto-join room from URL on mount
 onMounted(() => {
