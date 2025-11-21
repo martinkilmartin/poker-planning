@@ -371,19 +371,36 @@ export function useGame() {
     // Find next player to become host (first non-host player)
     const nextHost = state.players.find(p => !p.isHost);
     if (nextHost) {
+      transferHostTo(nextHost.userId);
+    }
+  };
+
+  const transferHostTo = (targetUserId: string) => {
+    if (!isHost.value) return;
+
+    const targetPlayer = state.players.find(p => p.userId === targetUserId);
+    if (targetPlayer) {
       // Update local state
       for (const p of state.players) {
-        p.isHost = p.id === nextHost.id;
+        p.isHost = p.userId === targetUserId;
       }
-      isHost.value = myPeerId.value === nextHost.id;
+      isHost.value = myUserId === targetUserId;
 
       // Broadcast to all players
       sendMessage({
         type: 'HOST_TRANSFER',
-        payload: { newHostId: nextHost.id } as HostTransferPayload,
+        payload: { newHostId: targetPlayer.id } as HostTransferPayload,
       });
 
-      console.log('Host transferred to:', nextHost.name);
+      console.log('Host transferred to:', targetPlayer.name);
+
+      // If we transferred to someone else, we are no longer host
+      if (myUserId !== targetUserId) {
+        // Save state as non-host
+        if (roomId.value && myPlayer.value) {
+          saveRoomState(roomId.value, false, myPlayer.value.name, myPeerId.value!, myUserId);
+        }
+      }
     }
   };
 
@@ -504,6 +521,7 @@ export function useGame() {
     leaveRoom,
     updatePlayerStatus,
     updateSettings,
+    transferHostTo,
   };
 }
 

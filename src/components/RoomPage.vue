@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useGame } from '../composables/useGame';
 import { usePeer } from '../composables/usePeer';
+import type { Player } from '../types';
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import Toast from './Toast.vue';
 
@@ -16,7 +17,8 @@ const {
   serverConnectionStatus,
   currentServerMode,
   reconnect,
-  updateSettings, // Added
+  updateSettings,
+  transferHostTo, // Added
 } = useGame();
 const { startHeartbeat, stopHeartbeat, getPeerStatus } = usePeer();
 
@@ -160,6 +162,23 @@ const countdownDisplay = computed(() => {
   const elapsed = (now.value - state.countdownStartTime) / 1000;
   return Math.max(0, Math.ceil(state.autoRevealDuration - elapsed));
 });
+
+// Host Transfer Logic
+const showTransferConfirm = ref(false);
+const transferTarget = ref<Player | null>(null);
+
+const confirmHostTransfer = (player: Player) => {
+  transferTarget.value = player;
+  showTransferConfirm.value = true;
+};
+
+const executeTransfer = () => {
+  if (transferTarget.value) {
+    transferHostTo(transferTarget.value.userId);
+    showTransferConfirm.value = false;
+    transferTarget.value = null;
+  }
+};
 </script>
 
 <template>
@@ -295,11 +314,36 @@ const countdownDisplay = computed(() => {
           <div class="player-name">
             <span class="status-dot" :class="getPlayerStatus(player.id)" />
             {{ player.name }}
-            <span v-if="player.isHost">(Host)</span>
+            <span v-if="player.isHost" class="host-badge" title="Host">👑</span>
+
+            <!-- Host Transfer Button -->
+            <button
+              v-if="isHost && !player.isHost"
+              class="btn-icon btn-transfer-host"
+              title="Make Host"
+              @click="confirmHostTransfer(player)"
+            >
+              👑
+            </button>
           </div>
         </div>
       </div>
     </main>
+
+    <!-- Host Transfer Confirmation Dialog -->
+    <div v-if="showTransferConfirm" class="modal-overlay">
+      <div class="modal glass-panel">
+        <h3>Transfer Host?</h3>
+        <p>
+          Are you sure you want to make <strong>{{ transferTarget?.name }}</strong> the host?
+        </p>
+        <p class="warning-text">You will lose host privileges.</p>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" @click="showTransferConfirm = false">Cancel</button>
+          <button class="btn btn-primary" @click="executeTransfer">Confirm</button>
+        </div>
+      </div>
+    </div>
 
     <footer class="hand-area glass-panel">
       <div class="cards-scroll">
@@ -863,5 +907,54 @@ const countdownDisplay = computed(() => {
 .player-name {
   display: flex;
   align-items: center;
+}
+.btn-transfer-host {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  opacity: 0.3;
+  transition: opacity 0.2s;
+  padding: 0 0.25rem;
+  filter: grayscale(100%);
+}
+
+.btn-transfer-host:hover {
+  opacity: 1;
+  filter: none;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 200;
+}
+
+.modal {
+  padding: 2rem;
+  background: var(--surface-color);
+  border-radius: 12px;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+}
+
+.warning-text {
+  color: var(--primary-color);
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
 }
 </style>
