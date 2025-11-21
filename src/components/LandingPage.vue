@@ -23,11 +23,23 @@ onMounted(async () => {
     name.value = roomState.myName;
     isLoading.value = true;
     
+    // Add timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      console.error('Rejoin timed out');
+      isLoading.value = false;
+    }, 10000);
+    
     try {
       await rejoinRoom(roomState.roomId, roomState.myName, roomState.isHost, useLocalServer.value);
-      // Rejoin successful - stay in loading state, will navigate to room
+      // Rejoin successful
+      clearTimeout(timeoutId);
+      // Give a moment for state to update before clearing loading
+      setTimeout(() => {
+        isLoading.value = false;
+      }, 500);
     } catch (e) {
       console.error('Auto-rejoin failed:', e);
+      clearTimeout(timeoutId);
       isLoading.value = false;
       // Clear stale room state
       const savedUserName = getSavedUserName();
@@ -53,6 +65,10 @@ onMounted(async () => {
       isLoading.value = true;
       try {
         await joinRoom(roomIdFromURL, savedName, useLocalServer.value);
+        // Give a moment for state to update
+        setTimeout(() => {
+          isLoading.value = false;
+        }, 500);
       } catch (e) {
         console.error('Auto-join failed:', e);
         isLoading.value = false;
