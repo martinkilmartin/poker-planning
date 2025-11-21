@@ -13,6 +13,8 @@ const state = reactive<GameState>({
 });
 
 const roomId = ref<string | null>(null);
+// isServer: True if I am the PeerJS server (Room Creator). Handles networking/broadcasting.
+const isServer = ref(false);
 
 export function useGame() {
   const {
@@ -31,9 +33,6 @@ export function useGame() {
 
   const myUserId = getOrCreateUserId(); // Get stable user ID
   const myPlayer = computed(() => state.players.find(p => p.userId === myUserId));
-
-  // isServer: True if I am the PeerJS server (Room Creator). Handles networking/broadcasting.
-  const isServer = ref(false);
 
   // isAdmin: True if I am the current Game Host (Logical Host). Handles UI/Game actions.
   const isAdmin = computed(() => myPlayer.value?.isHost ?? false);
