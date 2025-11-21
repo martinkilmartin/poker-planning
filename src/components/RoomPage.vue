@@ -459,10 +459,18 @@ watch(
 .card-back {
   width: 100%;
   height: 100%;
-  background: var(--primary-color);
-  border-radius: 6px;
+  background: var(--bg-color); /* Off-white background */
+  border: 3px solid var(--primary-color); /* Air Canada red border */
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem; /* Large maple leaf */
 }
 
+.card-back::before {
+  content: '🍁'; /* Canadian maple leaf emoji */
+}
 .card-front {
   font-size: 1.5rem;
   font-weight: bold;
