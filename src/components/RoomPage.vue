@@ -266,7 +266,14 @@ watch(
   flex-direction: column;
   height: 100vh;
   padding: 1rem;
+  max-width: 100%;
+  height: 100vh; /* Fixed height */
+  margin: 0 auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
   gap: 1rem;
+  overflow: hidden; /* Prevent body scroll */
 }
 
 .header {
@@ -420,6 +427,8 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow-y: auto; /* Allow table area to scroll if needed */
+  min-height: 0; /* Crucial for nested flex scrolling */
 }
 
 .players-grid {
@@ -594,11 +603,22 @@ watch(
   }
 }
 
+.hand-area {
+  padding: 1rem;
+  overflow-x: auto;
+  background: var(--glass-bg);
+  border-top: 1px solid var(--border-color);
+  margin: 0 -1rem -1rem -1rem; /* Stretch to edges */
+  padding-bottom: max(1rem, env(safe-area-inset-bottom)); /* Safe area for mobile */
+  flex-shrink: 0; /* Don't shrink */
+}
+
 .cards-scroll {
   display: flex;
   gap: 1rem;
   justify-content: center;
-  min-width: max-content;
+  min-width: max-content; /* Ensure scroll works */
+  padding: 0 1rem;
 }
 
 .poker-card {
