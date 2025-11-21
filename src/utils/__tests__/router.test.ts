@@ -105,7 +105,7 @@ describe('router.ts', () => {
 
   describe('saveRoomState / getRoomState', () => {
     it('should save room state to localStorage', () => {
-      saveRoomState('ABC123', true, 'Alice', 'PEER123', 'USER123', true);
+      saveRoomState('ABC123', true, 'Alice', 'PEER123', 'USER123', true, true, 10, null, 'HOST123');
 
       const saved = JSON.parse(localStorage.getItem('poker-planning-room-state')!);
       expect(saved).toEqual({
@@ -118,6 +118,7 @@ describe('router.ts', () => {
         autoReveal: true,
         autoRevealDuration: 10,
         countdownStartTime: null,
+        hostUserId: 'HOST123',
       });
     });
 
@@ -139,7 +140,7 @@ describe('router.ts', () => {
     });
 
     it('should save peer ID correctly', () => {
-      saveRoomState(' abc ', true, 'Alice', 'PEER789', 'USER789', true);
+      saveRoomState(' abc ', true, 'Alice', 'PEER789', 'USER789', true, true, 10, null, 'HOST789');
 
       const saved = JSON.parse(localStorage.getItem('poker-planning-room-state')!);
       expect(saved.myPeerId).toBe('PEER789');
@@ -148,7 +149,7 @@ describe('router.ts', () => {
 
   describe('clearRoomState', () => {
     it('should remove room state from localStorage', () => {
-      saveRoomState('ABC123', true, 'Alice', 'PEER123', 'USER123', true);
+      saveRoomState('ABC123', true, 'Alice', 'PEER123', 'USER123', true, true, 10, null, 'HOST123');
       clearRoomState();
       expect(localStorage.getItem('poker-planning-room-state')).toBeNull();
     });

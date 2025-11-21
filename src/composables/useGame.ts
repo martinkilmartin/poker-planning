@@ -32,10 +32,17 @@ export function useGame() {
   const myUserId = getOrCreateUserId(); // Get stable user ID
   const myPlayer = computed(() => state.players.find(p => p.userId === myUserId));
 
+  // isServer: True if I am the PeerJS server (Room Creator). Handles networking/broadcasting.
+  const isServer = ref(false);
+
+  // isAdmin: True if I am the current Game Host (Logical Host). Handles UI/Game actions.
+  const isAdmin = computed(() => myPlayer.value?.isHost ?? false);
+
   // Host Logic
   const createRoom = async (name: string, useLocalServer = false, customCode?: string) => {
     const id = await initializePeer(customCode, useLocalServer); // Wait for connection
-    isHost.value = true;
+    isServer.value = true; // I am the server
+    isHost.value = true; // I am also the initial admin (for UI compatibility, though we should prefer isAdmin)
     roomId.value = id; // Store the room ID
 
     // Add self to players
@@ -49,7 +56,7 @@ export function useGame() {
     });
 
     // Save room state for refresh/rejoin
-    saveRoomState(id, true, name, myPeerId.value!, myUserId, true);
+    saveRoomState(id, true, name, myPeerId.value!, myUserId, true, true, 10, null, myUserId);
 
     // Navigate to room URL
     navigateToRoom(id);
@@ -92,6 +99,7 @@ export function useGame() {
     savedPeerId: string,
     savedUserId: string, // Stable user ID!
     savedIsOwner: boolean, // Added: Check if user is the room creator
+    savedHostUserId: string | null, // Added: Restore host identity
     useLocalServer = false
   ) => {
     console.log(
@@ -109,7 +117,8 @@ export function useGame() {
     if (savedIsOwner || wasHost) {
       // Rejoin as host - reinitialize with same room ID (peer ID)
       await initializePeer(savedRoomId, useLocalServer);
-      isHost.value = true;
+      isServer.value = true; // I am the server (owner)
+      isHost.value = savedHostUserId ? savedHostUserId === savedUserId : wasHost; // Restore admin status
       roomId.value = savedRoomId;
 
       // Re-add self to players list
@@ -119,7 +128,7 @@ export function useGame() {
           userId: savedUserId,
           name: savedName,
           vote: null,
-          isHost: true,
+          isHost: savedHostUserId ? savedHostUserId === savedUserId : true, // Use saved host ID if available, else default to true (legacy)
           connectionStatus: 'online',
         },
       ];
@@ -128,6 +137,7 @@ export function useGame() {
     } else {
       // Rejoin as client - use a new peer ID but SAME user ID
       await initializePeer(undefined, useLocalServer); // New peer connection
+      isServer.value = false;
       isHost.value = false;
       roomId.value = savedRoomId;
 
@@ -160,13 +170,13 @@ export function useGame() {
 
     switch (packet.type) {
       case 'JOIN': {
-        if (isHost.value) {
+        if (isServer.value) {
           handleJoin(senderId, packet.payload.name, packet.payload.userId);
         }
         break;
       }
       case 'REJOIN': {
-        if (isHost.value) {
+        if (isServer.value) {
           handleRejoin(senderId, packet.payload.userId, packet.payload.name);
         }
         break;
@@ -180,22 +190,26 @@ export function useGame() {
         break;
       }
       case 'VOTE': {
-        if (isHost.value) {
+        // Server receives vote, updates state, and broadcasts
+        if (isServer.value) {
           handleVote(senderId, packet.payload.vote);
         }
         break;
       }
       case 'REVEAL': {
         state.status = 'revealed';
+        if (isServer.value) broadcastState(); // Re-broadcast if server
         break;
       }
       case 'HIDE': {
         state.status = 'voting';
+        if (isServer.value) broadcastState(); // Re-broadcast if server
         break;
       }
       case 'RESET': {
         state.status = 'voting';
         for (const p of state.players) p.vote = null;
+        if (isServer.value) broadcastState(); // Re-broadcast if server
         break;
       }
       case 'HOST_TRANSFER': {
@@ -218,6 +232,7 @@ export function useGame() {
       }
       case 'UPDATE_SETTINGS': {
         handleUpdateSettings(packet.payload);
+        if (isServer.value) broadcastState(); // Re-broadcast if server
         break;
       }
     }
@@ -225,7 +240,13 @@ export function useGame() {
 
   // Auto-reveal check interval
   setInterval(() => {
-    if (isHost.value && state.autoReveal && state.countdownStartTime && state.status === 'voting') {
+    // Only Server runs the auto-reveal timer logic
+    if (
+      isServer.value &&
+      state.autoReveal &&
+      state.countdownStartTime &&
+      state.status === 'voting'
+    ) {
       const elapsed = (Date.now() - state.countdownStartTime) / 1000;
       if (elapsed >= state.autoRevealDuration) {
         reveal();
@@ -235,13 +256,14 @@ export function useGame() {
 
   // State Heartbeat: Broadcast full state periodically to ensure sync
   setInterval(() => {
-    if (isHost.value) {
+    if (isServer.value) {
       broadcastState();
     }
   }, 2000);
 
   // Host Handlers
   const handleJoin = (id: string, name: string, userId: string) => {
+    if (!isServer.value) return; // Only server handles joins
     // Check if already exists by userId (not peer ID)
     if (!state.players.find(p => p.userId === userId)) {
       state.players.push({
@@ -367,8 +389,11 @@ export function useGame() {
       p.isHost = p.id === payload.newHostId;
     }
     // Update local isHost flag and save state
+    // Update local isHost flag (for UI)
     isHost.value = myPeerId.value === payload.newHostId;
-    if (isHost.value && roomId.value && myPlayer.value) {
+
+    // Save state
+    if (roomId.value && myPlayer.value) {
       // If we are claiming host, we might be the owner or not.
       // Ideally we track isOwner in state, but for now let's assume if we claim host we are "logical host".
       // But wait, isOwner is about "Technical Host" (room creator).
@@ -379,7 +404,22 @@ export function useGame() {
       // Better: Add isOwner to useGame state or just read from localStorage.
       const savedState = localStorage.getItem('poker-planning-room-state');
       const isOwner = savedState ? JSON.parse(savedState).isOwner : false;
-      saveRoomState(roomId.value, true, myPlayer.value.name, myPeerId.value!, myUserId, isOwner);
+
+      // Find new host to get their userId
+      const newHost = state.players.find(p => p.id === payload.newHostId);
+
+      saveRoomState(
+        roomId.value,
+        true,
+        myPlayer.value.name,
+        myPeerId.value!,
+        myUserId,
+        isOwner,
+        state.autoReveal,
+        state.autoRevealDuration,
+        state.countdownStartTime,
+        newHost ? newHost.userId : null
+      );
     }
   };
 
@@ -392,7 +432,7 @@ export function useGame() {
   };
 
   const transferHostTo = (targetUserId: string) => {
-    if (!isHost.value) return;
+    if (!isAdmin.value) return; // Only admin can transfer
 
     const targetPlayer = state.players.find(p => p.userId === targetUserId);
     if (targetPlayer) {
@@ -402,11 +442,27 @@ export function useGame() {
       }
       isHost.value = myUserId === targetUserId;
 
-      // Broadcast to all players
-      sendMessage({
-        type: 'HOST_TRANSFER',
-        payload: { newHostId: targetPlayer.id } as HostTransferPayload,
-      });
+      // Broadcast to all players (if server) or send packet (if admin client)
+      if (isServer.value) {
+        broadcastState();
+        sendMessage({
+          type: 'HOST_TRANSFER',
+          payload: { newHostId: targetPlayer.id } as HostTransferPayload,
+        });
+      } else {
+        // If I am Admin but not Server, I must tell Server to broadcast?
+        // Actually, HOST_TRANSFER packet is handled by everyone.
+        // But I can only send to Server.
+        // Server receives HOST_TRANSFER? No, it's not in the switch case!
+        // We need to add HOST_TRANSFER to switch case for Server to re-broadcast?
+        // Existing handler: handleHostTransfer updates state.
+        // If Server receives it, it updates state.
+        // We should ensure Server re-broadcasts it.
+        sendMessage({
+          type: 'HOST_TRANSFER',
+          payload: { newHostId: targetPlayer.id } as HostTransferPayload,
+        });
+      }
 
       console.log('Host transferred to:', targetPlayer.name);
 
@@ -423,7 +479,11 @@ export function useGame() {
             myPlayer.value.name,
             myPeerId.value!,
             myUserId,
-            isOwner
+            isOwner,
+            state.autoReveal,
+            state.autoRevealDuration,
+            state.countdownStartTime,
+            targetUserId // The target user ID is the new host ID
           );
         }
       }
@@ -446,11 +506,36 @@ export function useGame() {
       const savedState = localStorage.getItem('poker-planning-room-state');
       const isOwner = savedState ? JSON.parse(savedState).isOwner : false;
 
+      const currentHost = state.players.find(p => p.isHost);
+      const hostUserId = currentHost ? currentHost.userId : isHost.value ? myUserId : null;
+
       if (isHost.value) {
-        saveRoomState(roomId.value, true, myPlayer.value.name, myPeerId.value!, myUserId, isOwner);
+        saveRoomState(
+          roomId.value,
+          true,
+          myPlayer.value.name,
+          myPeerId.value!,
+          myUserId,
+          isOwner,
+          state.autoReveal,
+          state.autoRevealDuration,
+          state.countdownStartTime,
+          hostUserId
+        );
       } else if (!isHost.value && wasHost) {
         // Was host, now demoted
-        saveRoomState(roomId.value, false, myPlayer.value.name, myPeerId.value!, myUserId, isOwner);
+        saveRoomState(
+          roomId.value,
+          false,
+          myPlayer.value.name,
+          myPeerId.value!,
+          myUserId,
+          isOwner,
+          state.autoReveal,
+          state.autoRevealDuration,
+          state.countdownStartTime,
+          hostUserId
+        );
       }
     }
   };
@@ -490,34 +575,49 @@ export function useGame() {
   };
 
   const reveal = () => {
-    if (isHost.value) {
+    if (isAdmin.value) {
       state.status = 'revealed';
       state.countdownStartTime = null; // Clear countdown
-      broadcastState();
-      sendMessage({ type: 'REVEAL' });
+
+      if (isServer.value) {
+        broadcastState();
+        sendMessage({ type: 'REVEAL' });
+      } else {
+        sendMessage({ type: 'REVEAL' });
+      }
     }
   };
 
   const hide = () => {
-    if (isHost.value) {
+    if (isAdmin.value) {
       state.status = 'voting';
-      broadcastState();
-      sendMessage({ type: 'HIDE' });
+
+      if (isServer.value) {
+        broadcastState();
+        sendMessage({ type: 'HIDE' });
+      } else {
+        sendMessage({ type: 'HIDE' });
+      }
     }
   };
 
   const reset = () => {
-    if (isHost.value) {
+    if (isAdmin.value) {
       state.status = 'voting';
       state.countdownStartTime = null; // Clear countdown
       for (const p of state.players) p.vote = null;
-      broadcastState(); // Or send RESET packet
-      sendMessage({ type: 'RESET' });
+
+      if (isServer.value) {
+        broadcastState();
+        sendMessage({ type: 'RESET' });
+      } else {
+        sendMessage({ type: 'RESET' });
+      }
     }
   };
 
   const updateSettings = (autoReveal: boolean, duration: number) => {
-    if (isHost.value) {
+    if (isAdmin.value) {
       state.autoReveal = autoReveal;
       state.autoRevealDuration = duration;
       state.countdownStartTime = null; // Reset countdown on settings change
@@ -526,7 +626,10 @@ export function useGame() {
         type: 'UPDATE_SETTINGS',
         payload: { autoReveal, autoRevealDuration: duration },
       });
-      broadcastState();
+
+      if (isServer.value) {
+        broadcastState();
+      }
     }
   };
 
@@ -534,7 +637,7 @@ export function useGame() {
     state,
     myPeerId,
     roomId,
-    isHost,
+    isHost: isAdmin, // Expose isAdmin as isHost for UI compatibility
     createRoom,
     joinRoom,
     rejoinRoom,

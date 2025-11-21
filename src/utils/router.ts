@@ -63,6 +63,7 @@ export interface RoomState {
   autoReveal: boolean;
   autoRevealDuration: number;
   countdownStartTime: number | null;
+  hostUserId: string | null; // User ID of the current game host
 }
 
 export const saveRoomState = (
@@ -74,7 +75,8 @@ export const saveRoomState = (
   isOwner: boolean,
   autoReveal: boolean = true,
   autoRevealDuration: number = 10,
-  countdownStartTime: number | null = null
+  countdownStartTime: number | null = null,
+  hostUserId: string | null = null
 ): void => {
   try {
     const state: RoomState = {
@@ -87,6 +89,7 @@ export const saveRoomState = (
       autoReveal,
       autoRevealDuration,
       countdownStartTime,
+      hostUserId,
     };
     localStorage.setItem(ROOM_STATE_KEY, JSON.stringify(state));
   } catch (error) {

@@ -48,6 +48,11 @@ vi.mock('../../utils/router', () => ({
   clearRoomState: vi.fn(),
 }));
 
+// Mock userId utility
+vi.mock('../../utils/userId', () => ({
+  getOrCreateUserId: vi.fn().mockReturnValue('TEST_USER_ID'),
+}));
+
 // Import after mock
 import { useGame } from '../useGame';
 
@@ -104,12 +109,11 @@ describe('useGame', () => {
 
   describe('reveal/hide/reset', () => {
     it('should reveal votes when host', () => {
-      const { reveal, state, isHost } = useGame();
+      const { reveal, state } = useGame();
 
-      // Set as host first
-      isHost.value = true;
+      // Set as host by updating state
       state.players = [
-        { id: '1', userId: 'user1', name: 'Alice', vote: '5', isHost: true },
+        { id: '1', userId: 'TEST_USER_ID', name: 'Alice', vote: '5', isHost: true },
         { id: '2', userId: 'user2', name: 'Bob', vote: '8', isHost: false },
       ];
 
@@ -119,13 +123,12 @@ describe('useGame', () => {
     });
 
     it('should hide votes when host', () => {
-      const { hide, state, isHost } = useGame();
+      const { hide, state } = useGame();
 
-      // Set as host first
-      isHost.value = true;
+      // Set as host by updating state
       state.status = 'revealed';
       state.players = [
-        { id: '1', userId: 'user1', name: 'Alice', vote: '5', isHost: true },
+        { id: '1', userId: 'TEST_USER_ID', name: 'Alice', vote: '5', isHost: true },
         { id: '2', userId: 'user2', name: 'Bob', vote: '8', isHost: false },
       ];
 
@@ -135,13 +138,12 @@ describe('useGame', () => {
     });
 
     it('should reset votes when host', () => {
-      const { reset, state, isHost } = useGame();
+      const { reset, state } = useGame();
 
-      // Set as host first
-      isHost.value = true;
+      // Set as host by updating state
       state.status = 'revealed';
       state.players = [
-        { id: '1', userId: 'user1', name: 'Alice', vote: '5', isHost: true },
+        { id: '1', userId: 'TEST_USER_ID', name: 'Alice', vote: '5', isHost: true },
         { id: '2', userId: 'user2', name: 'Bob', vote: '8', isHost: false },
       ];
 
@@ -214,10 +216,10 @@ describe('useGame', () => {
     it('should clear all room state', () => {
       const { state, leaveRoom, roomId, isHost } = useGame();
 
-      state.players = [{ id: '1', userId: 'user1', name: 'Alice', vote: '5', isHost: true }];
+      state.players = [{ id: '1', userId: 'TEST_USER_ID', name: 'Alice', vote: '5', isHost: true }];
       state.status = 'revealed';
       roomId.value = 'ABC123';
-      isHost.value = true;
+      // isHost is computed, so we don't set it directly
 
       leaveRoom();
 
