@@ -49,7 +49,7 @@ export function useGame() {
     });
 
     // Save room state for refresh/rejoin
-    saveRoomState(id, true, name, myPeerId.value!, myUserId);
+    saveRoomState(id, true, name, myPeerId.value!, myUserId, true);
 
     // Navigate to room URL
     navigateToRoom(id);
@@ -61,14 +61,12 @@ export function useGame() {
     roomId.value = hostRoomId; // Store the room ID (host's ID)
     connectToPeer(hostRoomId);
 
-    // We need to wait for connection to open before sending JOIN?
-    // usePeer handles connection setup.
-    // We can listen for 'open' on the connection in usePeer, but here we just want to send JOIN once connected.
-    // A simple way is to retry or wait.
-    // Wait a moment for connection to establish, then send JOIN packet
-    setTimeout(() => {
+    // Wait for connection to establish, then send JOIN packet
+    // Use polling to ensure connection is open (more robust than setTimeout)
+    const checkInterval = setInterval(() => {
       const hostConn = connections.value.find(c => c.peer === hostRoomId && c.open);
       if (hostConn) {
+        clearInterval(checkInterval);
         sendMessage(
           {
             type: 'JOIN',
@@ -76,8 +74,6 @@ export function useGame() {
           },
           hostRoomId
         );
-      } else {
-        console.error('Failed to connect to host');
       }
     }, 100);
 
@@ -85,7 +81,7 @@ export function useGame() {
     navigateToRoom(hostRoomId);
 
     // Save room state for refresh/rejoin
-    saveRoomState(hostRoomId, false, name, myPeerId.value!, myUserId);
+    saveRoomState(hostRoomId, false, name, myPeerId.value!, myUserId, false);
   };
 
   // Rejoin existing room after refresh
@@ -95,6 +91,7 @@ export function useGame() {
     wasHost: boolean,
     savedPeerId: string,
     savedUserId: string, // Stable user ID!
+    savedIsOwner: boolean, // Added: Check if user is the room creator
     useLocalServer = false
   ) => {
     console.log(
@@ -107,7 +104,9 @@ export function useGame() {
       savedPeerId
     );
 
-    if (wasHost) {
+    // If user is the owner (creator), they MUST rejoin as host to restore the room
+    // regardless of whether they transferred host privileges temporarily.
+    if (savedIsOwner || wasHost) {
       // Rejoin as host - reinitialize with same room ID (peer ID)
       await initializePeer(savedRoomId, useLocalServer);
       isHost.value = true;
@@ -363,7 +362,17 @@ export function useGame() {
     // Update local isHost flag and save state
     isHost.value = myPeerId.value === payload.newHostId;
     if (isHost.value && roomId.value && myPlayer.value) {
-      saveRoomState(roomId.value, true, myPlayer.value.name, myPeerId.value!, myUserId);
+      // If we are claiming host, we might be the owner or not.
+      // Ideally we track isOwner in state, but for now let's assume if we claim host we are "logical host".
+      // But wait, isOwner is about "Technical Host" (room creator).
+      // If we claim host, we don't become the room creator.
+      // We need to know if we are the owner.
+      // We can store isOwner in local state or infer it.
+      // Since we don't have isOwner in local state variable, let's read it from existing localStorage or default to false?
+      // Better: Add isOwner to useGame state or just read from localStorage.
+      const savedState = localStorage.getItem('poker-planning-room-state');
+      const isOwner = savedState ? JSON.parse(savedState).isOwner : false;
+      saveRoomState(roomId.value, true, myPlayer.value.name, myPeerId.value!, myUserId, isOwner);
     }
   };
 
@@ -398,7 +407,17 @@ export function useGame() {
       if (myUserId !== targetUserId) {
         // Save state as non-host
         if (roomId.value && myPlayer.value) {
-          saveRoomState(roomId.value, false, myPlayer.value.name, myPeerId.value!, myUserId);
+          // Preserve isOwner status
+          const savedState = localStorage.getItem('poker-planning-room-state');
+          const isOwner = savedState ? JSON.parse(savedState).isOwner : false;
+          saveRoomState(
+            roomId.value,
+            false,
+            myPlayer.value.name,
+            myPeerId.value!,
+            myUserId,
+            isOwner
+          );
         }
       }
     }
@@ -416,11 +435,16 @@ export function useGame() {
     isHost.value = myPeerId.value === newHostId;
 
     // Update room state
-    if (isHost.value && roomId.value && myPlayer.value) {
-      saveRoomState(roomId.value, true, myPlayer.value.name, myPeerId.value!, myUserId);
-    } else if (!isHost.value && wasHost && roomId.value && myPlayer.value) {
-      // Was host, now demoted
-      saveRoomState(roomId.value, false, myPlayer.value.name, myPeerId.value!, myUserId);
+    if (roomId.value && myPlayer.value) {
+      const savedState = localStorage.getItem('poker-planning-room-state');
+      const isOwner = savedState ? JSON.parse(savedState).isOwner : false;
+
+      if (isHost.value) {
+        saveRoomState(roomId.value, true, myPlayer.value.name, myPeerId.value!, myUserId, isOwner);
+      } else if (!isHost.value && wasHost) {
+        // Was host, now demoted
+        saveRoomState(roomId.value, false, myPlayer.value.name, myPeerId.value!, myUserId, isOwner);
+      }
     }
   };
 

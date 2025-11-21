@@ -41,6 +41,7 @@ onMounted(async () => {
         roomState.isHost,
         roomState.myPeerId,
         roomState.userId, // Pass saved user ID!
+        roomState.isOwner, // Pass saved isOwner flag!
         useLocalServer.value
       );
       // Rejoin successful

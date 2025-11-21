@@ -59,6 +59,7 @@ export interface RoomState {
   myName: string;
   myPeerId: string; // PeerJS connection ID (changes on reconnect)
   userId: string; // Stable user ID (persists across reconnects)
+  isOwner: boolean; // True if this user created the room (Technical Host)
   autoReveal: boolean;
   autoRevealDuration: number;
   countdownStartTime: number | null;
@@ -70,6 +71,7 @@ export const saveRoomState = (
   myName: string,
   myPeerId: string,
   userId: string,
+  isOwner: boolean,
   autoReveal: boolean = true,
   autoRevealDuration: number = 10,
   countdownStartTime: number | null = null
@@ -81,6 +83,7 @@ export const saveRoomState = (
       myName,
       myPeerId,
       userId,
+      isOwner,
       autoReveal,
       autoRevealDuration,
       countdownStartTime,
