@@ -126,14 +126,21 @@ const handleJoin = async () => {
       <h1 class="title">Poker Planning</h1>
 
       <div class="input-group">
-        <label>Your Name</label>
-        <input v-model="name" type="text" placeholder="Enter your name" maxlength="15" />
+        <label for="username">Your Name</label>
+        <input
+          id="username"
+          v-model="name"
+          type="text"
+          placeholder="Enter your name"
+          maxlength="15"
+        />
       </div>
 
       <div v-if="mode === 'menu'">
         <div class="input-group">
-          <label>Custom Room Code (optional)</label>
+          <label for="room-code">Custom Room Code (optional)</label>
           <input
+            id="room-code"
             v-model="customRoomCode"
             type="text"
             placeholder="e.g., MYROOM (6 chars)"
@@ -154,8 +161,9 @@ const handleJoin = async () => {
 
       <div v-else class="join-form">
         <div class="input-group">
-          <label>Room ID</label>
+          <label for="room-id">Room ID</label>
           <input
+            id="room-id"
             v-model="roomId"
             type="text"
             placeholder="Paste Room ID"

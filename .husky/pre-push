@@ -1,1 +1,2 @@
+npx playwright test
 npm run build
