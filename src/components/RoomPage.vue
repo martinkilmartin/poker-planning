@@ -423,28 +423,61 @@ watch(
 }
 
 .players-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 2rem;
-  justify-items: center;
-  max-width: 900px;
-  padding: 2rem;
-  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  justify-content: center;
+  max-width: 100%;
+  padding: 1rem;
 }
 
-/* Oval table background */
-.players-grid::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 80%;
-  height: 60%;
-  background: var(--surface-color);
-  border: 2px solid var(--border-color);
-  border-radius: 50%;
-  z-index: -1;
+/* Mobile responsive */
+@media (max-width: 640px) {
+  .players-grid {
+    gap: 1rem;
+    padding: 0.5rem;
+  }
+
+  .card-slot {
+    width: 50px;
+    height: 75px;
+  }
+
+  .room-page {
+    padding: 0.5rem;
+  }
+
+  .header {
+    padding: 0.75rem;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .controls {
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .btn-sm {
+    width: 100%;
+  }
+
+  .stats-bar {
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .hand-area {
+    padding: 0.5rem;
+  }
+
+  .poker-card {
+    width: 45px;
+    height: 70px;
+    font-size: 1rem;
+  }
 }
 
 .player-seat {
