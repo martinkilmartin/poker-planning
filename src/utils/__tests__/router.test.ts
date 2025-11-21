@@ -114,6 +114,9 @@ describe('router.ts', () => {
         myName: 'Alice',
         myPeerId: 'PEER123',
         userId: 'USER123',
+        autoReveal: true,
+        autoRevealDuration: 10,
+        countdownStartTime: null,
       });
     });
 

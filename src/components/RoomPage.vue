@@ -16,6 +16,7 @@ const {
   serverConnectionStatus,
   currentServerMode,
   reconnect,
+  updateSettings, // Added
 } = useGame();
 const { startHeartbeat, stopHeartbeat, getPeerStatus } = usePeer();
 
@@ -105,6 +106,8 @@ const closeToast = () => {
   showToast.value = false;
 };
 
+const showSettings = ref(false); // Added
+
 // Start heartbeat when component mounts
 onMounted(() => {
   startHeartbeat();
@@ -144,6 +147,19 @@ watch(
     }
   }
 );
+
+// Countdown for auto-reveal
+const now = ref(Date.now());
+setInterval(() => {
+  now.value = Date.now();
+}, 100); // Update frequently for smooth UI
+
+const countdownDisplay = computed(() => {
+  if (!state.countdownStartTime || !state.autoReveal) return null;
+  // Use 'now' dependency to trigger reactivity
+  const elapsed = (now.value - state.countdownStartTime) / 1000;
+  return Math.max(0, Math.ceil(state.autoRevealDuration - elapsed));
+});
 </script>
 
 <template>
@@ -172,6 +188,9 @@ watch(
           </button>
           <button v-if="state.status === 'revealed'" class="btn btn-sm" @click="hide">Hide</button>
           <button class="btn btn-sm btn-danger" @click="endSession">End Session</button>
+          <button class="btn btn-sm" title="Settings" @click="showSettings = !showSettings">
+            ⚙️
+          </button>
         </div>
         <div class="secondary-controls">
           <button class="btn btn-sm btn-reset" @click="reset">Reset Votes</button>
@@ -188,14 +207,52 @@ watch(
         class="voters-waiting"
       >
         <span class="waiting-label">Waiting for:</span>
-        <span
-          v-for="player in playersWhoHaventVoted"
-          :key="player.id"
-          class="waiting-player"
-          :class="{ ping: votedCount >= totalPlayers - 1 && votedCount > 0 }"
-        >
-          {{ player.name }}
+
+        <!-- Show count if more than 1 person -->
+        <span v-if="playersWhoHaventVoted.length > 1" class="waiting-count">
+          {{ playersWhoHaventVoted.length }} people
         </span>
+
+        <!-- Show name and countdown if only 1 person -->
+        <span v-else-if="playersWhoHaventVoted.length === 1" class="waiting-player ping">
+          {{ playersWhoHaventVoted[0]?.name }}
+          <span v-if="countdownDisplay" class="countdown-timer"> ({{ countdownDisplay }}s) </span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Host Settings Panel -->
+    <div v-if="isHost && showSettings" class="settings-panel glass-panel">
+      <div class="settings-header">
+        <h3>Room Settings</h3>
+        <button class="btn-close" @click="showSettings = false">×</button>
+      </div>
+      <div class="setting-item">
+        <label class="checkbox-label">
+          <input
+            type="checkbox"
+            :checked="state.autoReveal"
+            @change="
+              e => updateSettings((e.target as HTMLInputElement).checked, state.autoRevealDuration)
+            "
+          />
+          Auto-reveal when one person left
+        </label>
+      </div>
+      <div v-if="state.autoReveal" class="setting-item">
+        <label>
+          Timer Duration (seconds):
+          <input
+            type="number"
+            min="5"
+            max="60"
+            :value="state.autoRevealDuration"
+            class="duration-input"
+            @change="
+              e => updateSettings(state.autoReveal, Number((e.target as HTMLInputElement).value))
+            "
+          />
+        </label>
       </div>
     </div>
 
@@ -619,6 +676,61 @@ watch(
   justify-content: center;
   min-width: max-content; /* Ensure scroll works */
   padding: 0 1rem;
+}
+
+.settings-panel {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  width: 300px;
+  padding: 1.5rem;
+  z-index: 100;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-lg);
+}
+
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.settings-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.setting-item {
+  margin-bottom: 1rem;
+}
+
+.duration-input {
+  width: 60px;
+  padding: 0.25rem;
+  margin-left: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
+
+.waiting-count {
+  font-weight: bold;
+  color: var(--primary-color);
+}
+
+.countdown-timer {
+  color: var(--primary-color);
+  font-weight: bold;
+  margin-left: 0.25rem;
 }
 
 .poker-card {

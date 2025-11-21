@@ -11,7 +11,10 @@ export type GameStatus = 'voting' | 'revealed';
 
 export interface GameState {
   players: Player[];
-  status: GameStatus;
+  status: 'voting' | 'revealed';
+  autoReveal: boolean;
+  autoRevealDuration: number;
+  countdownStartTime: number | null;
 }
 
 // Network Packet Types
@@ -27,7 +30,8 @@ export type PacketType =
   | 'REJOIN'
   | 'PING'
   | 'PONG'
-  | 'HOST_CLAIM';
+  | 'HOST_CLAIM'
+  | 'UPDATE_SETTINGS';
 
 export interface Packet {
   type: PacketType;

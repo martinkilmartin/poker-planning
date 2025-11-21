@@ -7,6 +7,9 @@ import { getOrCreateUserId } from '../utils/userId';
 const state = reactive<GameState>({
   players: [],
   status: 'voting',
+  autoReveal: true,
+  autoRevealDuration: 10,
+  countdownStartTime: null,
 });
 
 const roomId = ref<string | null>(null);
@@ -214,8 +217,22 @@ export function useGame() {
         updatePlayerStatus(senderId, 'online');
         break;
       }
+      case 'UPDATE_SETTINGS': {
+        handleUpdateSettings(packet.payload);
+        break;
+      }
     }
   };
+
+  // Auto-reveal check interval
+  setInterval(() => {
+    if (isHost.value && state.autoReveal && state.countdownStartTime && state.status === 'voting') {
+      const elapsed = (Date.now() - state.countdownStartTime) / 1000;
+      if (elapsed >= state.autoRevealDuration) {
+        reveal();
+      }
+    }
+  }, 1000);
 
   // Host Handlers
   const handleJoin = (id: string, name: string, userId: string) => {
@@ -281,14 +298,37 @@ export function useGame() {
     const player = state.players.find(p => p.id === id);
     if (player) {
       player.vote = vote;
+      checkCountdownTrigger();
       broadcastState();
+    }
+  };
+
+  const checkCountdownTrigger = () => {
+    if (!state.autoReveal) return;
+
+    const totalPlayers = state.players.length;
+    const votedPlayers = state.players.filter(p => p.vote).length;
+    const remaining = totalPlayers - votedPlayers;
+
+    if (remaining === 1 && !state.countdownStartTime) {
+      // Start countdown
+      state.countdownStartTime = Date.now();
+    } else if (remaining === 0) {
+      // Everyone voted, clear countdown (reveal will happen naturally or manually)
+      state.countdownStartTime = null;
     }
   };
 
   const broadcastState = () => {
     sendMessage({
       type: 'UPDATE_STATE',
-      payload: { players: state.players, status: state.status },
+      payload: {
+        players: state.players,
+        status: state.status,
+        autoReveal: state.autoReveal,
+        autoRevealDuration: state.autoRevealDuration,
+        countdownStartTime: state.countdownStartTime,
+      },
     });
   };
 
@@ -301,6 +341,17 @@ export function useGame() {
   const handleUpdateState = (payload: any) => {
     state.players = payload.players;
     state.status = payload.status;
+    // Sync settings if provided (for backward compatibility)
+    if (payload.autoReveal !== undefined) state.autoReveal = payload.autoReveal;
+    if (payload.autoRevealDuration !== undefined)
+      state.autoRevealDuration = payload.autoRevealDuration;
+    if (payload.countdownStartTime !== undefined)
+      state.countdownStartTime = payload.countdownStartTime;
+  };
+
+  const handleUpdateSettings = (payload: any) => {
+    state.autoReveal = payload.autoReveal;
+    state.autoRevealDuration = payload.autoRevealDuration;
   };
 
   const handleHostTransfer = (payload: HostTransferPayload) => {
@@ -393,6 +444,7 @@ export function useGame() {
   const reveal = () => {
     if (isHost.value) {
       state.status = 'revealed';
+      state.countdownStartTime = null; // Clear countdown
       broadcastState();
       sendMessage({ type: 'REVEAL' });
     }
@@ -409,9 +461,24 @@ export function useGame() {
   const reset = () => {
     if (isHost.value) {
       state.status = 'voting';
+      state.countdownStartTime = null; // Clear countdown
       for (const p of state.players) p.vote = null;
       broadcastState(); // Or send RESET packet
       sendMessage({ type: 'RESET' });
+    }
+  };
+
+  const updateSettings = (autoReveal: boolean, duration: number) => {
+    if (isHost.value) {
+      state.autoReveal = autoReveal;
+      state.autoRevealDuration = duration;
+      state.countdownStartTime = null; // Reset countdown on settings change
+
+      sendMessage({
+        type: 'UPDATE_SETTINGS',
+        payload: { autoReveal, autoRevealDuration: duration },
+      });
+      broadcastState();
     }
   };
 
@@ -436,6 +503,7 @@ export function useGame() {
     broadcastState,
     leaveRoom,
     updatePlayerStatus,
+    updateSettings,
   };
 }
 

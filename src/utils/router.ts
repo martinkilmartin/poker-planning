@@ -59,6 +59,9 @@ export interface RoomState {
   myName: string;
   myPeerId: string; // PeerJS connection ID (changes on reconnect)
   userId: string; // Stable user ID (persists across reconnects)
+  autoReveal: boolean;
+  autoRevealDuration: number;
+  countdownStartTime: number | null;
 }
 
 export const saveRoomState = (
@@ -66,10 +69,22 @@ export const saveRoomState = (
   isHost: boolean,
   myName: string,
   myPeerId: string,
-  userId: string
+  userId: string,
+  autoReveal: boolean = true,
+  autoRevealDuration: number = 10,
+  countdownStartTime: number | null = null
 ): void => {
   try {
-    const state: RoomState = { roomId, isHost, myName, myPeerId, userId };
+    const state: RoomState = {
+      roomId,
+      isHost,
+      myName,
+      myPeerId,
+      userId,
+      autoReveal,
+      autoRevealDuration,
+      countdownStartTime,
+    };
     localStorage.setItem(ROOM_STATE_KEY, JSON.stringify(state));
   } catch (error) {
     console.error('Failed to save room state:', error);
