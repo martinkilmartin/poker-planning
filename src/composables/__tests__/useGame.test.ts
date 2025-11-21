@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ref } from 'vue';
 
 // Mock PeerJS first
 vi.mock('peerjs', () => {
@@ -68,9 +67,9 @@ describe('useGame', () => {
       expect(isHost.value).toBe(true);
       expect(roomId.value).toBeTruthy();
       expect(state.players).toHaveLength(1);
-      expect(state.players[0].name).toBe('Alice');
-      expect(state.players[0].isHost).toBe(true);
-      expect(state.players[0].connectionStatus).toBe('online');
+      expect(state.players[0]!.name).toBe('Alice');
+      expect(state.players[0]!.isHost).toBe(true);
+      expect(state.players[0]!.connectionStatus).toBe('online');
     });
 
     it('should use custom room code if provided', async () => {
@@ -98,7 +97,7 @@ describe('useGame', () => {
 
       vote('5');
 
-      expect(state.players[0].vote).toBe('5');
+      expect(state.players[0]!.vote).toBe('5');
     });
   });
 
@@ -148,8 +147,8 @@ describe('useGame', () => {
       reset();
 
       expect(state.status).toBe('voting');
-      expect(state.players[0].vote).toBeNull();
-      expect(state.players[1].vote).toBeNull();
+      expect(state.players[0]!.vote).toBeNull();
+      expect(state.players[1]!.vote).toBeNull();
     });
   });
 
@@ -196,7 +195,7 @@ describe('useGame', () => {
 
       updatePlayerStatus('player1', 'away');
 
-      expect(state.players[0].connectionStatus).toBe('away');
+      expect(state.players[0]!.connectionStatus).toBe('away');
     });
 
     it('should handle non-existent player gracefully', () => {

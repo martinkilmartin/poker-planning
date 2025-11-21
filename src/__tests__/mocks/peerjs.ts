@@ -21,7 +21,7 @@ export class MockDataConnection {
     this.eventHandlers.get(event)!.push(handler);
   }
 
-  send(data: any) {
+  send(_data: any) {
     // Simulate sending data
   }
 
@@ -47,7 +47,7 @@ export class MockPeer {
   destroyed: boolean = false;
   private eventHandlers: Map<string, Function[]> = new Map();
 
-  constructor(id?: string, config?: any) {
+  constructor(id?: string, _config?: any) {
     this.id = id || 'MOCK-' + Math.random().toString(36).substr(2, 6).toUpperCase();
 
     // Simulate peer initialization
@@ -63,7 +63,7 @@ export class MockPeer {
     this.eventHandlers.get(event)!.push(handler);
   }
 
-  connect(peerId: string, options?: any): MockDataConnection {
+  connect(peerId: string, _options?: any): MockDataConnection {
     const connection = new MockDataConnection(peerId);
     return connection;
   }

@@ -36,7 +36,7 @@ describe('router.ts', () => {
       navigateToRoom('ABC123');
 
       expect(pushStateSpy).toHaveBeenCalled();
-      const url = pushStateSpy.mock.calls[0][2] as string;
+      const url = pushStateSpy.mock.calls[0]![2] as string;
       expect(url).toContain('?room=ABC123');
     });
 
@@ -44,7 +44,7 @@ describe('router.ts', () => {
       const pushStateSpy = vi.spyOn(window.history, 'pushState');
       navigateToRoom('abc123');
 
-      const url = pushStateSpy.mock.calls[0][2] as string;
+      const url = pushStateSpy.mock.calls[0]![2] as string;
       expect(url).toContain('?room=ABC123');
     });
   });
@@ -57,7 +57,7 @@ describe('router.ts', () => {
       navigateToHome();
 
       expect(pushStateSpy).toHaveBeenCalled();
-      const url = pushStateSpy.mock.calls[0][2] as string;
+      const url = pushStateSpy.mock.calls[0]![2] as string;
       expect(url).not.toContain('room=');
     });
   });
