@@ -1,4 +1,4 @@
 {
-  "*.{ts,vue}": ["prettier --write", "npm run test -- --run --changed"],
+  "*.{ts,vue}": ["eslint --fix", "prettier --write", "npm run test -- --run --changed"],
   "*.{json,md}": ["prettier --write"]
 }

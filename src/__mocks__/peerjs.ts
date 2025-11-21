@@ -26,7 +26,7 @@ export class MockDataConnection {
 
   emit(event: string, ...args: any[]) {
     const handlers = this.eventHandlers.get(event) || [];
-    handlers.forEach(handler => handler(...args));
+    for (const handler of handlers) handler(...args);
   }
 }
 
@@ -37,7 +37,7 @@ export class MockPeer {
   private eventHandlers: Map<string, Function[]> = new Map();
 
   constructor(id?: string) {
-    this.id = id || 'MOCK' + Math.random().toString(36).substr(2, 6).toUpperCase();
+    this.id = id || 'MOCK' + Math.random().toString(36).slice(2, 8).toUpperCase();
     // Immediately emit open to simulate successful connection
     setTimeout(() => this.emit('open', this.id), 0);
   }
@@ -65,7 +65,7 @@ export class MockPeer {
 
   emit(event: string, ...args: any[]) {
     const handlers = this.eventHandlers.get(event) || [];
-    handlers.forEach(handler => handler(...args));
+    for (const handler of handlers) handler(...args);
   }
 }
 

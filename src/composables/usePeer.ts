@@ -77,7 +77,7 @@ export function usePeer() {
         if (!resolved) {
           reject(new Error('Connection timeout'));
         }
-      }, 10000);
+      }, 10_000);
 
       p.on('open', id => {
         console.log('My peer ID is: ' + id);
@@ -114,52 +114,65 @@ export function usePeer() {
         // Detailed error messages for users
         let userMessage = '';
 
-        if (err.type === 'peer-unavailable') {
-          userMessage =
-            '❌ Room not found.\n\n' +
-            'The room may have closed or the Room ID is incorrect.\n' +
-            'Please check the code and try again.';
-        } else if (err.type === 'network') {
-          userMessage =
-            '🌐 Network Connection Problem\n\n' +
-            'Cannot connect to the signaling server.\n\n' +
-            '🔍 Common causes:\n' +
-            '• Corporate VPN blocking WebRTC traffic\n' +
-            '• Firewall blocking required ports\n' +
-            '• No internet connection\n\n' +
-            '💡 Try:\n' +
-            '1. Disconnect from VPN and retry\n' +
-            '2. Check "Use Local Server (Dev)" if on same network\n' +
-            '3. Check your internet connection';
-        } else if (err.type === 'server-error') {
-          userMessage =
-            '🔌 Server Connection Failed\n\n' +
-            'Cannot reach the PeerJS server.\n\n' +
-            '💡 Try:\n' +
-            '• Use "Local Server (Dev)" option\n' +
-            '• Check your network connection\n' +
-            '• Server may be temporarily down';
-        } else if (err.type === 'socket-error' || err.message?.includes('WebSocket')) {
-          userMessage =
-            '🔒 WebSocket Connection Blocked\n\n' +
-            'Your network is blocking the connection.\n\n' +
-            '🔍 This usually means:\n' +
-            '• VPN is active (most common)\n' +
-            '• Corporate firewall blocking ports\n' +
-            '• Network proxy interfering\n\n' +
-            '💡 Solutions:\n' +
-            '1. Disconnect VPN and try again\n' +
-            '2. Use "Local Server (Dev)" if everyone is on the same network\n' +
-            '3. Contact IT to whitelist *.peerjs.com';
-        } else if (err.type === 'disconnected') {
-          userMessage =
-            '📡 Connection Lost\n\n' +
-            'Lost connection to signaling server.\n\n' +
-            '💡 Click the "Reconnect" button to try again.';
-        } else {
-          userMessage =
-            `⚠️ Connection Error\n\n${err.message || 'Unknown error'}\n\n` +
-            '💡 If on VPN, try disconnecting and refreshing the page.';
+        switch (err.type) {
+          case 'peer-unavailable': {
+            userMessage =
+              '❌ Room not found.\n\n' +
+              'The room may have closed or the Room ID is incorrect.\n' +
+              'Please check the code and try again.';
+
+            break;
+          }
+          case 'network': {
+            userMessage =
+              '🌐 Network Connection Problem\n\n' +
+              'Cannot connect to the signaling server.\n\n' +
+              '🔍 Common causes:\n' +
+              '• Corporate VPN blocking WebRTC traffic\n' +
+              '• Firewall blocking required ports\n' +
+              '• No internet connection\n\n' +
+              '💡 Try:\n' +
+              '1. Disconnect from VPN and retry\n' +
+              '2. Check "Use Local Server (Dev)" if on same network\n' +
+              '3. Check your internet connection';
+
+            break;
+          }
+          case 'server-error': {
+            userMessage =
+              '🔌 Server Connection Failed\n\n' +
+              'Cannot reach the PeerJS server.\n\n' +
+              '💡 Try:\n' +
+              '• Use "Local Server (Dev)" option\n' +
+              '• Check your network connection\n' +
+              '• Server may be temporarily down';
+
+            break;
+          }
+          default: {
+            if (err.type === 'socket-error' || err.message?.includes('WebSocket')) {
+              userMessage =
+                '🔒 WebSocket Connection Blocked\n\n' +
+                'Your network is blocking the connection.\n\n' +
+                '🔍 This usually means:\n' +
+                '• VPN is active (most common)\n' +
+                '• Corporate firewall blocking ports\n' +
+                '• Network proxy interfering\n\n' +
+                '💡 Solutions:\n' +
+                '1. Disconnect VPN and try again\n' +
+                '2. Use "Local Server (Dev)" if everyone is on the same network\n' +
+                '3. Contact IT to whitelist *.peerjs.com';
+            } else if (err.type === 'disconnected') {
+              userMessage =
+                '📡 Connection Lost\n\n' +
+                'Lost connection to signaling server.\n\n' +
+                '💡 Click the "Reconnect" button to try again.';
+            } else {
+              userMessage =
+                `⚠️ Connection Error\n\n${err.message || 'Unknown error'}\n\n` +
+                '💡 If on VPN, try disconnecting and refreshing the page.';
+            }
+          }
         }
 
         error.value = userMessage;
@@ -243,11 +256,11 @@ export function usePeer() {
       }
     } else {
       // Broadcast
-      connections.value.forEach(conn => {
+      for (const conn of connections.value) {
         if (conn.open) {
           conn.send(data);
         }
-      });
+      }
     }
   };
 
@@ -268,26 +281,26 @@ export function usePeer() {
 
     // Send PING every 10 seconds
     heartbeatInterval = setInterval(() => {
-      connections.value.forEach(conn => {
+      for (const conn of connections.value) {
         if (conn.open) {
           conn.send({ type: 'PING', timestamp: Date.now() });
         }
-      });
+      }
 
       // Update status based on last seen
       const now = Date.now();
-      peerHealth.value.forEach(health => {
+      for (const [, health] of peerHealth.value) {
         const timeSinceLastSeen = now - health.lastSeen;
 
-        if (timeSinceLastSeen > 30000) {
+        if (timeSinceLastSeen > 30_000) {
           health.status = 'offline';
-        } else if (timeSinceLastSeen > 15000) {
+        } else if (timeSinceLastSeen > 15_000) {
           health.status = 'away';
         } else {
           health.status = 'online';
         }
-      });
-    }, 10000);
+      }
+    }, 10_000);
   };
 
   const stopHeartbeat = () => {
@@ -309,8 +322,8 @@ export function usePeer() {
     if (!health) return 'offline';
 
     const timeSinceLastSeen = Date.now() - health.lastSeen;
-    if (timeSinceLastSeen > 30000) return 'offline';
-    if (timeSinceLastSeen > 15000) return 'away';
+    if (timeSinceLastSeen > 30_000) return 'offline';
+    if (timeSinceLastSeen > 15_000) return 'away';
     return 'online';
   };
 

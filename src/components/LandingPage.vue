@@ -32,7 +32,7 @@ onMounted(async () => {
     const timeoutId = setTimeout(() => {
       console.error('Rejoin timed out');
       isLoading.value = false;
-    }, 10000);
+    }, 10_000);
 
     try {
       await rejoinRoom(roomState.roomId, roomState.myName, roomState.isHost, useLocalServer.value);
@@ -42,8 +42,8 @@ onMounted(async () => {
       setTimeout(() => {
         isLoading.value = false;
       }, 500);
-    } catch (e) {
-      console.error('Auto-rejoin failed:', e);
+    } catch (error_) {
+      console.error('Auto-rejoin failed:', error_);
       clearTimeout(timeoutId);
       isLoading.value = false;
       // Clear stale room state
@@ -74,8 +74,8 @@ onMounted(async () => {
         setTimeout(() => {
           isLoading.value = false;
         }, 500);
-      } catch (e) {
-        console.error('Auto-join failed:', e);
+      } catch (error_) {
+        console.error('Auto-join failed:', error_);
         isLoading.value = false;
       }
     }
@@ -92,8 +92,8 @@ const handleCreate = async () => {
     saveUserName(name.value); // Save name for future sessions
     const roomCode = customRoomCode.value.trim().toUpperCase() || undefined;
     await createRoom(name.value, useLocalServer.value, roomCode);
-  } catch (e) {
-    console.error(e);
+  } catch (error_) {
+    console.error(error_);
     isLoading.value = false;
   }
 };
@@ -104,8 +104,8 @@ const handleJoin = async () => {
   try {
     saveUserName(name.value); // Save name for future sessions
     await joinRoom(roomId.value, name.value, useLocalServer.value);
-  } catch (e) {
-    console.error(e);
+  } catch (error_) {
+    console.error(error_);
     isLoading.value = false;
   }
 };
@@ -169,7 +169,7 @@ const handleJoin = async () => {
 
       <div class="dev-options">
         <label class="checkbox-label">
-          <input type="checkbox" v-model="useLocalServer" />
+          <input v-model="useLocalServer" type="checkbox" />
           <span>Use Local Server (Dev)</span>
         </label>
         <p class="help-text">
@@ -179,7 +179,9 @@ const handleJoin = async () => {
       </div>
 
       <div v-if="error" class="error-alert">
-        <div class="error-content">{{ error }}</div>
+        <div class="error-content">
+          {{ error }}
+        </div>
       </div>
     </div>
   </div>

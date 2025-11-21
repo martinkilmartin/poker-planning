@@ -150,51 +150,63 @@ export function useGame() {
     const packet = data as Packet;
 
     switch (packet.type) {
-      case 'JOIN':
+      case 'JOIN': {
         if (isHost.value) {
           handleJoin(senderId, packet.payload.name);
         }
         break;
-      case 'REJOIN':
+      }
+      case 'REJOIN': {
         if (isHost.value) {
           handleRejoin(senderId, packet.payload.name);
         }
         break;
-      case 'WELCOME':
+      }
+      case 'WELCOME': {
         handleWelcome(packet.payload);
         break;
-      case 'UPDATE_STATE':
+      }
+      case 'UPDATE_STATE': {
         handleUpdateState(packet.payload);
         break;
-      case 'VOTE':
+      }
+      case 'VOTE': {
         if (isHost.value) {
           handleVote(senderId, packet.payload.vote);
         }
         break;
-      case 'REVEAL':
+      }
+      case 'REVEAL': {
         state.status = 'revealed';
         break;
-      case 'HIDE':
+      }
+      case 'HIDE': {
         state.status = 'voting';
         break;
-      case 'RESET':
+      }
+      case 'RESET': {
         state.status = 'voting';
-        state.players.forEach(p => (p.vote = null));
+        for (const p of state.players) p.vote = null;
         break;
-      case 'HOST_TRANSFER':
+      }
+      case 'HOST_TRANSFER': {
         handleHostTransfer(packet.payload as HostTransferPayload);
         break;
-      case 'HOST_CLAIM':
+      }
+      case 'HOST_CLAIM': {
         handleHostClaim(senderId);
         break;
-      case 'PING':
+      }
+      case 'PING': {
         // Respond to ping
         sendMessage({ type: 'PONG', payload: { timestamp: Date.now() } }, senderId);
         break;
-      case 'PONG':
+      }
+      case 'PONG': {
         // Heartbeat response received
         updatePlayerStatus(senderId, 'online');
         break;
+      }
     }
   };
 
@@ -281,9 +293,9 @@ export function useGame() {
   const handleHostTransfer = (payload: HostTransferPayload) => {
     console.log('Host transferred to:', payload.newHostId);
     // Update host status for all players
-    state.players.forEach(p => {
+    for (const p of state.players) {
       p.isHost = p.id === payload.newHostId;
-    });
+    }
     // Update local isHost flag and save state
     isHost.value = myPeerId.value === payload.newHostId;
     if (isHost.value && roomId.value && myPlayer.value) {
@@ -296,9 +308,9 @@ export function useGame() {
     const nextHost = state.players.find(p => !p.isHost);
     if (nextHost) {
       // Update local state
-      state.players.forEach(p => {
+      for (const p of state.players) {
         p.isHost = p.id === nextHost.id;
-      });
+      }
       isHost.value = myPeerId.value === nextHost.id;
 
       // Broadcast to all players
@@ -314,9 +326,9 @@ export function useGame() {
   const handleHostClaim = (newHostId: string) => {
     console.log('Host claim from:', newHostId);
     // Update all players' host status
-    state.players.forEach(p => {
+    for (const p of state.players) {
       p.isHost = p.id === newHostId;
-    });
+    }
 
     // Update local isHost flag
     const wasHost = isHost.value;
@@ -351,7 +363,9 @@ export function useGame() {
     if (myPlayer.value) {
       myPlayer.value.vote = value; // Optimistic update
 
-      if (!isHost.value) {
+      if (isHost.value) {
+        broadcastState();
+      } else {
         // Find host? We don't explicitly store host ID, but we can infer or store it.
         // Actually, for clients, they only connect to Host.
         // So we can send to all connections (which is just the host).
@@ -359,8 +373,6 @@ export function useGame() {
           type: 'VOTE',
           payload: { vote: value },
         });
-      } else {
-        broadcastState();
       }
     }
   };
@@ -384,7 +396,7 @@ export function useGame() {
   const reset = () => {
     if (isHost.value) {
       state.status = 'voting';
-      state.players.forEach(p => (p.vote = null));
+      for (const p of state.players) p.vote = null;
       broadcastState(); // Or send RESET packet
       sendMessage({ type: 'RESET' });
     }
@@ -420,7 +432,7 @@ export function setupPlayerDisconnectDetection() {
   const { connections } = usePeer();
 
   // Watch for connection closures
-  connections.value.forEach(conn => {
+  for (const conn of connections.value) {
     conn.on('close', () => {
       console.log('Player disconnected:', conn.peer);
       const game = useGame();
@@ -438,5 +450,5 @@ export function setupPlayerDisconnectDetection() {
         game.broadcastState?.();
       }
     });
-  });
+  }
 }

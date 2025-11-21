@@ -48,7 +48,7 @@ export class MockPeer {
   private eventHandlers: Map<string, Function[]> = new Map();
 
   constructor(id?: string, _config?: any) {
-    this.id = id || 'MOCK-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+    this.id = id || 'MOCK-' + Math.random().toString(36).slice(2, 8).toUpperCase();
 
     // Simulate peer initialization
     setTimeout(() => {

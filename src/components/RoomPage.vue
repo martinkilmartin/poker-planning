@@ -28,7 +28,7 @@ const averageScore = computed(() => {
   const numericVotes = state.players
     .map(p => p.vote)
     .filter(v => v && !isNaN(Number(v)))
-    .map(v => Number(v));
+    .map(Number);
 
   if (numericVotes.length === 0) return 'N/A';
 
@@ -85,7 +85,7 @@ const copyLink = () => {
 
 const endSession = () => {
   if (confirm('Are you sure you want to end this session? All players will be disconnected.')) {
-    window.location.reload();
+    globalThis.location.reload();
   }
 };
 
@@ -137,8 +137,8 @@ watch(
           .then(() => {
             displayToast(`${consensusValue.value} copied to clipboard!`);
           })
-          .catch(err => {
-            console.error('Failed to copy to clipboard:', err);
+          .catch(error => {
+            console.error('Failed to copy to clipboard:', error);
           });
       }
     }
@@ -153,7 +153,7 @@ watch(
     <header class="header glass-panel">
       <div class="room-info">
         <span class="label">Room ID:</span>
-        <code @click="copyLink" class="room-id">{{ roomId }}</code>
+        <code class="room-id" @click="copyLink">{{ roomId }}</code>
         <div class="status-badge" :class="serverConnectionStatus">
           {{ serverConnectionStatus }} ({{ currentServerMode }})
         </div>
@@ -165,12 +165,12 @@ watch(
           Reconnect
         </button>
       </div>
-      <div class="controls" v-if="isHost">
+      <div v-if="isHost" class="controls">
         <div class="primary-controls">
-          <button class="btn btn-sm" @click="reveal" v-if="state.status === 'voting'">
+          <button v-if="state.status === 'voting'" class="btn btn-sm" @click="reveal">
             Reveal
           </button>
-          <button class="btn btn-sm" @click="hide" v-if="state.status === 'revealed'">Hide</button>
+          <button v-if="state.status === 'revealed'" class="btn btn-sm" @click="hide">Hide</button>
           <button class="btn btn-sm btn-danger" @click="endSession">End Session</button>
         </div>
         <div class="secondary-controls">
@@ -184,8 +184,8 @@ watch(
         {{ statusMessage }}
       </div>
       <div
-        class="voters-waiting"
         v-if="playersWhoHaventVoted.length > 0 && state.status === 'voting'"
+        class="voters-waiting"
       >
         <span class="waiting-label">Waiting for:</span>
         <span
@@ -199,11 +199,11 @@ watch(
       </div>
     </div>
 
-    <div class="confetti-container" v-if="showConfetti">
+    <div v-if="showConfetti" class="confetti-container">
       <div
-        class="confetti"
         v-for="i in 50"
         :key="i"
+        class="confetti"
         :style="{ left: Math.random() * 100 + '%', animationDelay: Math.random() * 0.5 + 's' }"
       >
         {{ ['🍁', '🏖️', '🏨', '✈️', '🌴', '🌊', '☀️', '🏝️'][Math.floor(Math.random() * 8)] }}
@@ -229,14 +229,14 @@ watch(
             class="card-slot"
             :class="{ 'has-voted': player.vote, revealed: state.status === 'revealed' }"
           >
-            <div class="card-back" v-if="player.vote && state.status === 'voting'"></div>
-            <div class="card-front" v-if="state.status === 'revealed' && player.vote">
+            <div v-if="player.vote && state.status === 'voting'" class="card-back" />
+            <div v-if="state.status === 'revealed' && player.vote" class="card-front">
               {{ player.vote }}
             </div>
-            <div class="waiting" v-if="!player.vote">Thinking...</div>
+            <div v-if="!player.vote" class="waiting">Thinking...</div>
           </div>
           <div class="player-name">
-            <span class="status-dot" :class="getPlayerStatus(player.id)"></span>
+            <span class="status-dot" :class="getPlayerStatus(player.id)" />
             {{ player.name }}
             <span v-if="player.isHost">(Host)</span>
           </div>

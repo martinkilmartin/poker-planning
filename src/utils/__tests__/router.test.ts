@@ -16,9 +16,9 @@ describe('router.ts', () => {
     // Clear localStorage before each test
     localStorage.clear();
     // Mock pushState to avoid CORS issues in tests
-    vi.spyOn(window.history, 'pushState').mockImplementation(() => {});
+    vi.spyOn(globalThis.history, 'pushState').mockImplementation(() => {});
     // Reset window.location
-    Object.defineProperty(window, 'location', {
+    Object.defineProperty(globalThis, 'location', {
       value: {
         href: 'http://localhost:5173/',
         search: '',
@@ -32,7 +32,7 @@ describe('router.ts', () => {
 
   describe('navigateToRoom', () => {
     it('should set room parameter in URL', () => {
-      const pushStateSpy = vi.spyOn(window.history, 'pushState');
+      const pushStateSpy = vi.spyOn(globalThis.history, 'pushState');
       navigateToRoom('ABC123');
 
       expect(pushStateSpy).toHaveBeenCalled();
@@ -41,7 +41,7 @@ describe('router.ts', () => {
     });
 
     it('should uppercase room ID', () => {
-      const pushStateSpy = vi.spyOn(window.history, 'pushState');
+      const pushStateSpy = vi.spyOn(globalThis.history, 'pushState');
       navigateToRoom('abc123');
 
       const url = pushStateSpy.mock.calls[0]![2] as string;
@@ -51,8 +51,8 @@ describe('router.ts', () => {
 
   describe('navigateToHome', () => {
     it('should remove room parameter from URL', () => {
-      window.location.search = '?room=ABC123';
-      const pushStateSpy = vi.spyOn(window.history, 'pushState');
+      globalThis.location.search = '?room=ABC123';
+      const pushStateSpy = vi.spyOn(globalThis.history, 'pushState');
 
       navigateToHome();
 
@@ -64,17 +64,17 @@ describe('router.ts', () => {
 
   describe('getCurrentRoomFromURL', () => {
     it('should return room ID from URL', () => {
-      window.location.search = '?room=ABC123';
+      globalThis.location.search = '?room=ABC123';
       expect(getCurrentRoomFromURL()).toBe('ABC123');
     });
 
     it('should return null when no room parameter', () => {
-      window.location.search = '';
+      globalThis.location.search = '';
       expect(getCurrentRoomFromURL()).toBeNull();
     });
 
     it('should uppercase room ID', () => {
-      window.location.search = '?room=abc123';
+      globalThis.location.search = '?room=abc123';
       expect(getCurrentRoomFromURL()).toBe('ABC123');
     });
   });
