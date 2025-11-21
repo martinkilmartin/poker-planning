@@ -195,9 +195,12 @@ export function useGame() {
 
       // Send REJOIN packet to let host know we're back
       // Wait for connection then send REJOIN
+      // If no connection is established within timeout, claim host role
+      let connectionEstablished = false;
       const checkInterval = setInterval(() => {
         const hostConn = connections.value.find(c => c.peer === savedRoomId && c.open);
         if (hostConn) {
+          connectionEstablished = true;
           clearInterval(checkInterval);
           sendMessage(
             {
@@ -209,8 +212,69 @@ export function useGame() {
         }
       }, 100);
 
+      // Connection timeout: if no server responds, claim host
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        if (!connectionEstablished) {
+          console.log('No server found for room, claiming host role...');
+          claimHostRole(savedRoomId, savedName, savedUserId, useLocalServer);
+        }
+      }, 5000); // 5 second timeout
+
       navigateToRoom(savedRoomId);
     }
+  };
+
+  // Helper function: Claim host role when rejoining a room with no active server
+  const claimHostRole = async (
+    savedRoomId: string,
+    savedName: string,
+    savedUserId: string,
+    useLocalServer: boolean
+  ) => {
+    console.log('Claiming host role for room:', savedRoomId);
+
+    // Reinitialize as server with the saved room ID
+    await initializePeer(savedRoomId, useLocalServer);
+
+    // Give the peer server a moment to fully initialize and be ready to accept connections
+    // This prevents race conditions where clients try to connect before server is ready
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    isServer.value = true;
+    isHost.value = true;
+    roomId.value = savedRoomId;
+
+    // Add self to players list as host
+    state.players = [
+      {
+        id: myPeerId.value!,
+        userId: savedUserId,
+        name: savedName,
+        vote: null,
+        isHost: true,
+        connectionStatus: 'online',
+      },
+    ];
+
+    // Update localStorage to reflect new owner/host status
+    saveRoomState(
+      savedRoomId,
+      true, // isHost
+      savedName,
+      myPeerId.value!,
+      savedUserId,
+      true, // isOwner - now we own this room
+      state.autoReveal,
+      state.autoRevealDuration,
+      state.countdownStartTime,
+      savedUserId // We are the host
+    );
+
+    // Broadcast to any peers that might have connected during the timeout
+    broadcastState();
+
+    console.log('Successfully claimed host role');
   };
 
   // Handle incoming data

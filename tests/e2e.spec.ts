@@ -3,7 +3,9 @@ import { test, expect } from '@playwright/test';
 test.describe('Poker Planning E2E', () => {
   test.afterEach(async ({ page }, testInfo) => {
     if (testInfo.status !== 'passed') {
-      await page.screenshot({ path: `failure-${testInfo.title.replace(/\s+/g, '-')}.png` });
+      await page.screenshot({
+        path: `playwright-report/screenshots/failure-${testInfo.title.replace(/\s+/g, '-')}.png`,
+      });
     }
   });
 
@@ -13,7 +15,7 @@ test.describe('Poker Planning E2E', () => {
     const hostPage = await hostContext.newPage();
     hostPage.on('console', msg => console.log('HOST CONSOLE:', msg.text()));
     await hostPage.goto('/');
-    await hostPage.screenshot({ path: 'debug-load.png' });
+    await hostPage.screenshot({ path: 'playwright-report/screenshots/debug-load.png' });
 
     // Create Room
     await hostPage.getByLabel('Your Name').fill('Host Alice');
@@ -308,15 +310,9 @@ test.describe('Poker Planning E2E', () => {
     // But `updateSettings` calls `broadcastState`.
     // The `setInterval` on Server checks `state.autoReveal`.
     // So if we enable it, and everyone voted, does it reveal immediately?
-    // The interval checks: `if (isServer.value && state.autoReveal && state.countdownStartTime && state.status === 'voting')`
-    // `countdownStartTime` is set in `checkCountdownTrigger`.
-    // If we disabled it, `countdownStartTime` might be null.
-    // So enabling it might not start the countdown unless someone votes again.
     // Let's have Guest change vote to trigger it.
     await guestPage.getByRole('button', { name: '13', exact: true }).click();
 
-    // Now it should reveal after duration (5s)
-    // We set duration to 5s earlier.
     await expect(hostPage.getByText('5', { exact: true })).toBeVisible({ timeout: 7000 });
   });
 });

@@ -22,6 +22,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-playwright-report/index.html
-test-results/.last-run.json
-debug-load.png
+playwright-report/*
+test-results/*

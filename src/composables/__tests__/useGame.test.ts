@@ -229,4 +229,66 @@ describe('useGame', () => {
       expect(isHost.value).toBe(false);
     });
   });
+
+  describe('rejoinRoom with host claim', () => {
+    it('should claim host when no server is found after timeout', async () => {
+      // Mock localStorage
+      const mockLocalStorage = {
+        getItem: vi.fn(),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+      };
+      Object.defineProperty(globalThis, 'localStorage', {
+        value: mockLocalStorage,
+        writable: true,
+      });
+
+      const { rejoinRoom, state, isHost, roomId } = useGame();
+
+      // Rejoin as non-owner, non-host (client)
+      // This will attempt to connect to server, fail, and claim host
+      rejoinRoom(
+        'TESTROOM',
+        'Alice',
+        false, // wasHost
+        'OLD_PEER',
+        'TEST_USER_ID',
+        false, // isOwner
+        null, // savedHostUserId
+        true // useLocalServer
+      );
+
+      // Wait for async operations and timeout (5s timeout + 1s delay + buffer)
+      await new Promise(resolve => setTimeout(resolve, 7000));
+
+      // After timeout, should have claimed host
+      expect(state.players).toHaveLength(1);
+      expect(state.players[0]?.name).toBe('Alice');
+      expect(state.players[0]?.isHost).toBe(true);
+      expect(isHost.value).toBe(true);
+      expect(roomId.value).toBe('TESTROOM');
+    }, 10000);
+
+    it('should rejoin as server if was owner', async () => {
+      const { rejoinRoom, state, isHost, roomId } = useGame();
+
+      await rejoinRoom(
+        'TESTROOM',
+        'Alice',
+        true, // wasHost
+        'OLD_PEER',
+        'TEST_USER_ID',
+        true, // isOwner
+        'TEST_USER_ID', // savedHostUserId
+        true // useLocalServer
+      );
+
+      // Should immediately be host (no timeout)
+      expect(state.players).toHaveLength(1);
+      expect(state.players[0]?.name).toBe('Alice');
+      expect(state.players[0]?.isHost).toBe(true);
+      expect(isHost.value).toBe(true);
+      expect(roomId.value).toBe('TESTROOM');
+    });
+  });
 });
