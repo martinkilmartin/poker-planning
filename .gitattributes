@@ -1,0 +1,14 @@
+# Exclude build output from language statistics
+dist/** linguist-generated=true
+
+# Exclude test files from language statistics (optional)
+**/__tests__/** linguist-detectable=false
+**/*.test.ts linguist-detectable=false
+**/*.spec.ts linguist-detectable=false
+
+# Mark config files appropriately
+*.config.js linguist-language=JavaScript
+*.config.ts linguist-language=TypeScript
+
+# Ensure Vue files are counted
+*.vue linguist-language=Vue
