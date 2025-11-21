@@ -18,7 +18,8 @@ const {
   currentServerMode,
   reconnect,
   updateSettings,
-  transferHostTo, // Added
+  transferHostTo,
+  myUserId, // Added
 } = useGame();
 const { startHeartbeat, stopHeartbeat, getPeerStatus } = usePeer();
 
@@ -299,7 +300,7 @@ const executeTransfer = () => {
           v-for="player in state.players"
           :key="player.id"
           class="player-seat"
-          :class="{ 'is-me': player.id === myPeerId }"
+          :class="{ 'is-me': player.userId === myUserId }"
         >
           <div
             class="card-slot"
@@ -313,7 +314,7 @@ const executeTransfer = () => {
           </div>
           <div class="player-name">
             <span class="status-dot" :class="getPlayerStatus(player.id)" />
-            {{ player.name }}
+            {{ player.name }} <span v-if="player.userId === myUserId" class="me-badge">(You)</span>
             <span v-if="player.isHost" class="host-badge" title="Host">👑</span>
 
             <!-- Host Transfer Button -->
@@ -595,6 +596,18 @@ const executeTransfer = () => {
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
+}
+
+.player-seat.is-me .player-name {
+  color: var(--primary-color);
+  font-weight: bold;
+}
+
+.me-badge {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-left: 0.25rem;
+  font-weight: normal;
 }
 
 .card-slot {

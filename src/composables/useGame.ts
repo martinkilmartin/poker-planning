@@ -546,6 +546,7 @@ export function useGame() {
     updatePlayerStatus,
     updateSettings,
     transferHostTo,
+    myUserId, // Added
   };
 }
 
